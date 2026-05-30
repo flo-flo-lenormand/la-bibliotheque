@@ -445,7 +445,6 @@ function ReadingScene({ book, onClose, reduced }: {
 
           {/* spine ridge */}
           <div className="tome__spine" aria-hidden />
-          {id.ribbon && <span className="tome__ribbon" style={{ "--rb": id.ribbon } as Vars} aria-hidden />}
         </div>
 
         <div className={`reader__dots ${open ? "is-open" : ""}`}>
@@ -643,10 +642,10 @@ const CSS = String.raw`
   transition: color .2s, background .2s; }
 .shelf__nav button:hover { color: var(--gold-hi); background: rgba(231,205,138,0.1); }
 
-.shelf__stage { position: relative; perspective: 1300px; perspective-origin: 50% 32%; }
+.shelf__stage { position: relative; display: flex; flex-direction: column; perspective: 1400px; perspective-origin: 50% 42%; }
 .shelf__row {
-  position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 10px;
-  padding: 26px 16px 0; min-height: 248px;
+  position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 20px;
+  padding: 46px 18px 0; min-height: 258px;
   overflow-x: auto; overflow-y: visible; scroll-snap-type: x proximity;
   transform-style: preserve-3d; scrollbar-width: none; -ms-overflow-style: none;
 }
@@ -654,19 +653,20 @@ const CSS = String.raw`
 .shelf__bookend { flex: 0 0 8px; }
 .shelf__empty { padding: 40px 16px 30px; text-align: center; color: var(--dim); font-style: italic; font-size: 14px; opacity: 0.8; }
 
-/* the plank the books sit on */
-.plank { position: absolute; left: 4px; right: 4px; bottom: 0; height: 26px; z-index: 1; transform-style: preserve-3d; }
-.plank__top { position: absolute; inset: 0 0 12px; border-radius: 3px;
-  background: linear-gradient(180deg, #6a4528, #3a2417);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 0 rgba(0,0,0,0.5); }
-.plank__front { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; border-radius: 0 0 4px 4px;
-  background: linear-gradient(180deg, #3a2417, #1c0f07);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.6); }
+/* the plank the books sit on — sits directly under the row */
+.plank { position: relative; z-index: 3; margin: -2px 2px 0; height: 28px; transform-style: preserve-3d; }
+.plank__top { position: absolute; inset: 0 0 14px; border-radius: 3px;
+  background: linear-gradient(180deg, #835833, #4a3020 65%, #34210f);
+  box-shadow: inset 0 1px 0 rgba(255,235,200,0.22), 0 -2px 8px rgba(0,0,0,0.4); }
+.plank__top::after { content: ""; position: absolute; inset: 0; border-radius: 3px; opacity: 0.4; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='40'%3E%3Cfilter id='pg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.5' numOctaves='4' seed='9'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23pg)'/%3E%3C/svg%3E"); }
+.plank__front { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, #3a2417, #150b04);
+  box-shadow: 0 14px 26px rgba(0,0,0,0.65); }
 
 /* ---- the 3D book ---- */
 .book {
   position: relative; flex: 0 0 auto; width: var(--w); height: var(--h);
-  margin-right: calc(-1 * var(--d) * 0.35); /* slight overlap, like a packed shelf */
   border: 0; background: none; padding: 0; cursor: pointer;
   transform-style: preserve-3d; scroll-snap-align: center;
   opacity: 0;
@@ -678,11 +678,11 @@ const CSS = String.raw`
 }
 .book__inner {
   position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 100%;
-  transform: rotateX(calc(4deg + var(--rx,0deg) * -0.15)) rotateY(calc(-26deg + var(--ry,0deg) * 0.25)) rotateZ(var(--lean));
+  transform: rotateX(calc(2deg + var(--rx,0deg) * -0.1)) rotateY(calc(-19deg + var(--ry,0deg) * 0.2)) rotateZ(var(--lean));
   transition: transform .65s cubic-bezier(.2,.8,.2,1);
 }
 .book:hover .book__inner, .book:focus-visible .book__inner {
-  transform: translateY(-12px) translateZ(46px) rotateX(2deg) rotateY(-14deg) rotateZ(0deg);
+  transform: translateY(-10px) translateZ(26px) rotateX(1deg) rotateY(-11deg) rotateZ(0deg);
 }
 .book:focus-visible { outline: none; }
 
@@ -793,17 +793,17 @@ const CSS = String.raw`
   transform: rotateX(72deg) rotateZ(0deg) scale(0.6); opacity: 0;
   transition: transform .9s cubic-bezier(.16,1,.3,1), opacity .5s; }
 .tome--open { opacity: 1;
-  transform: rotateX(calc(20deg + var(--rx,0deg) * 0.5)) rotateY(calc(var(--ry,0deg) * 0.5)) scale(1);
-  animation: tomeBreathe 9s ease-in-out infinite 1s; }
+  transform: rotateX(calc(8deg + var(--rx,0deg) * 0.35)) rotateY(calc(var(--ry,0deg) * 0.35)) scale(1);
+  animation: tomeBreathe 11s ease-in-out infinite 1s; }
 .tome--still.tome--open { animation: none; }
 @keyframes tomeBreathe {
-  0%,100% { transform: rotateX(20deg) rotateY(-2deg) scale(1); }
-  50%     { transform: rotateX(17deg) rotateY(3deg) translateZ(8px) scale(1.005); }
+  0%,100% { transform: rotateX(8deg) rotateY(-1.5deg) scale(1); }
+  50%     { transform: rotateX(6deg) rotateY(2deg) translateZ(6px) scale(1.003); }
 }
 
-.tome__block { position: absolute; left: 50%; bottom: 0; width: 70%; height: 22px; transform: translate(-50%, 10px) rotateX(90deg);
+.tome__block { position: absolute; left: 50%; bottom: 0; width: 88%; height: 16px; transform: translate(-50%, 0) rotateX(78deg);
   transform-origin: bottom center; background: repeating-linear-gradient(90deg, #efe6d3 0 1.5px, #cdbfa6 1.5px 3px);
-  border-radius: 2px; box-shadow: 0 0 18px rgba(0,0,0,0.5); }
+  border-radius: 0 0 3px 3px; box-shadow: 0 10px 22px rgba(0,0,0,0.45); }
 
 .leaf { position: absolute; top: 0; bottom: 0; width: 50%; transform-style: preserve-3d; }
 .leaf--left { left: 0; transform-origin: right center; transform: rotateY(18deg); }
@@ -812,8 +812,8 @@ const CSS = String.raw`
 .tome--open .leaf--right { transform: rotateY(0deg); }
 .leaf__face { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden;
   background: linear-gradient(#fbf5e8, #f1e7d3); box-shadow: inset 0 0 40px rgba(120,90,50,0.14); }
-.leaf--left .leaf__face { border-radius: 8px 0 0 8px; box-shadow: inset 0 0 40px rgba(120,90,50,0.14), inset -22px 0 30px rgba(60,40,20,0.22); }
-.leaf--right .leaf__face { border-radius: 0 8px 8px 0; box-shadow: inset 0 0 40px rgba(120,90,50,0.14), inset 22px 0 30px rgba(60,40,20,0.22); }
+.leaf--left .leaf__face { border-radius: 8px 0 0 8px; box-shadow: inset 0 0 34px rgba(120,90,50,0.1), inset -12px 0 20px rgba(60,40,20,0.14); }
+.leaf--right .leaf__face { border-radius: 0 8px 8px 0; box-shadow: inset 0 0 34px rgba(120,90,50,0.1), inset 12px 0 20px rgba(60,40,20,0.14); }
 .leaf__face::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"); }
 
@@ -824,13 +824,18 @@ const CSS = String.raw`
   clip-path: polygon(0 0,100% 0,100% 100%,50% 86%,0 100%); box-shadow: 0 0 10px rgba(0,0,0,0.4); }
 
 /* page content */
-.pg { position: absolute; inset: 0; padding: clamp(18px, 3.4vw, 34px); display: flex; flex-direction: column; color: #2a1c0f; }
+.pg { position: absolute; inset: 0; padding: clamp(20px, 3.6vw, 34px); display: flex; flex-direction: column; color: #2a1c0f; }
+/* keep text clear of the central gutter */
+.leaf--left .pg { padding-right: clamp(24px, 5.5vw, 42px); }
+.leaf--right .pg { padding-left: clamp(24px, 5.5vw, 42px); }
 .pg__kicker { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase;
-  color: #9a6b1f; margin-bottom: 14px; }
-.pg--cover { padding: clamp(14px,2.6vw,24px); }
-.pg__cover-art { position: relative; flex: 1; border-radius: 4px; overflow: hidden; background: #1a120b;
-  box-shadow: 0 14px 30px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.3); }
-.pg__cover-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  color: #9a6b1f; margin-bottom: 16px; }
+.pg--cover { padding: clamp(16px,3vw,26px); }
+.leaf--left .pg--cover { padding-right: clamp(16px,3vw,26px); }
+.pg__cover-art { position: relative; flex: 1; border-radius: 4px; overflow: hidden;
+  background: linear-gradient(160deg, #241a12, #120c07);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.35); }
+.pg__cover-art img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .pg__cover-glow { position: absolute; inset: 0; background: linear-gradient(125deg, rgba(255,255,255,0.18), transparent 40%); pointer-events: none; }
 .pg__cover-proc { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   padding: 18px; text-align: center; background: linear-gradient(135deg, var(--mid), var(--deep)); color: #f6ecd5; }
@@ -839,8 +844,8 @@ const CSS = String.raw`
 .pg__cover-proc p { margin: 0; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gilt-hi); font-family: ui-monospace, monospace; }
 
 .pg__note { margin: 0; font-size: clamp(15px, 2vw, 18px); line-height: 1.62; font-style: italic; color: #2a1c0f; }
-.pg__drop { float: left; font-family: 'Playfair Display', serif; font-style: normal; font-size: 3.1em; line-height: 0.78;
-  padding: 6px 8px 0 0; color: #7a4a2b; }
+.pg__drop { float: left; font-family: 'Playfair Display', serif; font-style: normal; font-size: 2.6em; line-height: 0.72;
+  padding: 2px 10px 0 0; color: #7a4a2b; }
 .pg__sign { margin-top: auto; padding-top: 18px; font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; color: #8a6b48; }
 
 .pg__dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
