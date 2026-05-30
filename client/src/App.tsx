@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type ApiResponse } from "./api";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { playCreak, playThud } from "./sounds";
+import { AddBookButton, AddBookModal } from "./AddBookModal";
 
 type Book = ApiResponse<typeof api, "list_books">["books"][number];
 
@@ -90,39 +92,6 @@ function bookDimensions(pageCount: number | null) {
   return { h, w, thick };
 }
 
-function playCreak() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sawtooth";
-    o.frequency.setValueAtTime(180, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.25);
-    g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.45);
-  } catch {}
-}
-
-function playThud() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(90, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.12);
-    g.gain.setValueAtTime(0.12, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.2);
-  } catch {}
-}
-
 export function App() {
   const { data, isPending } = useQuery({
     queryKey: ["books"],
@@ -133,6 +102,7 @@ export function App() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
   const dustRef = useDustParticles(80);
   const tilt = useParallax();
 
@@ -466,6 +436,10 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* Add-a-book workbench */}
+      {!active && <AddBookButton onOpen={() => setAddOpen(true)} />}
+      {addOpen && <AddBookModal onClose={() => setAddOpen(false)} />}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=Caveat:wght@400;500&display=swap');
