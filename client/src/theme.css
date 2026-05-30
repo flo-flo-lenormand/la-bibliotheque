@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "tailwindcss-safe-area";
+
+@theme {
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 36px;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 40px;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 52px;
+}
+
+:root {
+  color-scheme: light dark;
+  /* Warm library palette */
+  --bg: #1A120B;
+  --surface: #3B2F2F;
+  --wood: #5C3D2E;
+  --wood-dark: #3A2418;
+  --text: #F5EFE6;
+  --dim: #C9B8A8;
+  --border: #8B6F47;
+  --accent: #C9A227;
+  --glow: #E2C799;
+  --radius: 8px;
+  --space-surface: var(--surface);
+  --space-surface-alt: var(--wood);
+  --space-muted: var(--dim);
+  --space-border: var(--border);
+  --space-accent: var(--accent);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #F5EFE6;
+    --surface: #E8DFD3;
+    --wood: #5C3D2E;
+    --wood-dark: #4A3022;
+    --text: #1A120B;
+    --dim: #6B5A4A;
+    --border: #C9A227;
+  }
+}

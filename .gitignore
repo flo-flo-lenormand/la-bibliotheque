@@ -1,0 +1,13 @@
+node_modules/
+.bun-cache/
+app.db
+app.db-*
+audits/
+*.lock
+server/dist/
+client/dist/
+.harness/
+.space-build/
+.tsbuildinfo*
+client/.tsbuildinfo*
+server/.tsbuildinfo*

@@ -1,0 +1,8 @@
+{
+  "runtime": "typescript",
+  "platformVersion": 9,
+  "entry": "client/dist/index.html",
+  "name": "La Bibliothèque",
+  "slug": "la-biblioth-que",
+  "managedCronJobs": []
+}
