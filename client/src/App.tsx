@@ -269,31 +269,31 @@ export function App() {
         </filter>
       </svg>
 
-      {/* the lit room: a soft window cast + plant-leaf shadow on a warm wall */}
-      <svg className="scene-bg" viewBox="0 0 900 1600" preserveAspectRatio="xMidYMid slice" aria-hidden>
-        <defs>
-          <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22" /></filter>
-          <filter id="softer" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" /></filter>
-        </defs>
-        {/* sunlit window pane, cast diagonally from the upper-left */}
-        <g filter="url(#soft)">
-          <polygon points="-90,-90 610,-90 505,860 -90,940" fill="#fff7e8" opacity="0.55" />
-        </g>
-        {/* window frame (mullion) shadows crossing the light */}
-        <g filter="url(#softer)" opacity="0.5" fill="#7a5c34">
-          <polygon points="250,-90 300,-90 232,880 182,880" />
-          <polygon points="-90,560 560,486 569,556 -90,632" />
-        </g>
-        {/* plant-leaf shadow, lower-left */}
-        <g filter="url(#softer)" opacity="0.4" fill="#5e4a2c">
-          <ellipse cx="120" cy="1500" rx="150" ry="60" transform="rotate(-18 120 1500)" />
-          <ellipse cx="250" cy="1430" rx="120" ry="46" transform="rotate(14 250 1430)" />
-          <ellipse cx="60" cy="1360" rx="110" ry="44" transform="rotate(-32 60 1360)" />
-          <ellipse cx="300" cy="1540" rx="100" ry="40" transform="rotate(28 300 1540)" />
-          <ellipse cx="180" cy="1330" rx="90" ry="36" transform="rotate(-6 180 1330)" />
-          <rect x="150" y="1340" width="10" height="260" transform="rotate(-10 150 1340)" />
-        </g>
-      </svg>
+      {/* the lit room — window cast (top-left) + leaf shadow (bottom-left), bounded
+          so they read as corner features on any aspect ratio, not stretched full-bleed */}
+      <div className="scene-bg" aria-hidden>
+        <svg className="scene-bg__win" viewBox="0 0 620 900" preserveAspectRatio="xMidYMid meet">
+          <defs><filter id="sw" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20" /></filter></defs>
+          <g filter="url(#sw)">
+            <polygon points="-60,-60 470,-60 384,560 -60,648" fill="#fff7e6" opacity="0.62" />
+            <g fill="#7a5c34" opacity="0.46">
+              <polygon points="206,-60 250,-60 190,604 146,604" />
+              <polygon points="-60,366 432,300 440,360 -60,438" />
+            </g>
+          </g>
+        </svg>
+        <svg className="scene-bg__leaf" viewBox="0 0 420 360" preserveAspectRatio="xMinYMax meet">
+          <defs><filter id="sl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9" /></filter></defs>
+          <g filter="url(#sl)" fill="#5e4a2c" opacity="0.4">
+            <ellipse cx="120" cy="300" rx="150" ry="58" transform="rotate(-18 120 300)" />
+            <ellipse cx="250" cy="232" rx="118" ry="44" transform="rotate(14 250 232)" />
+            <ellipse cx="60" cy="170" rx="104" ry="42" transform="rotate(-32 60 170)" />
+            <ellipse cx="300" cy="324" rx="96" ry="38" transform="rotate(28 300 324)" />
+            <ellipse cx="170" cy="150" rx="84" ry="34" transform="rotate(-6 170 150)" />
+            <rect x="150" y="150" width="9" height="220" transform="rotate(-10 150 150)" />
+          </g>
+        </svg>
+      </div>
 
       <main className="lib__main">
         {isPending ? (
@@ -342,7 +342,9 @@ const CSS = String.raw`
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background: radial-gradient(140% 120% at 28% 16%, transparent 58%, rgba(108,82,48,0.10) 100%);
 }
-.scene-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.scene-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.scene-bg__win { position: absolute; top: -5%; left: -3%; width: min(60vw, 560px); height: auto; }
+.scene-bg__leaf { position: absolute; bottom: -2%; left: -3%; width: min(46vw, 360px); height: auto; }
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
 
