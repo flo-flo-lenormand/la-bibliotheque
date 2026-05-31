@@ -105,6 +105,7 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
         </div>
         <span className="rail__glass" aria-hidden />
         <div className="rail" aria-hidden>
+          <span className="rail__frost" />
           <span className="rail__frame" />
           <span className="rail__gloss" />
           <span className="rail__screw rail__screw--l" />
@@ -264,15 +265,10 @@ export function App() {
         <filter id="glassWarp" x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
           <feTurbulence type="fractalNoise" baseFrequency="0.010 0.018" numOctaves="2" seed="11" result="n" />
           <feGaussianBlur in="n" stdDeviation="1.6" result="nb" />
-          <feDisplacementMap in="SourceGraphic" in2="nb" scale="26" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="nb" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
       <main className="lib__main">
-        <header className="masthead">
-          <span className="masthead__over">My Favourite</span>
-          <h1 className="masthead__title">Books</h1>
-        </header>
-
         {isPending ? (
           <div className="lib__loading">Ouverture de la bibliothèque…</div>
         ) : shelves.length === 0 ? (
@@ -305,7 +301,7 @@ const CSS = String.raw`
 
 .lib *, .reader * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .lib {
-  --bg: #F3F2EF; --card: #FAF9F6; --ink: #1A1A1D; --muted: #9a978f; --line: rgba(0,0,0,0.10);
+  --bg: #EAE0CF; --card: #FAF6EE; --ink: #211f1b; --muted: #8f897d; --line: rgba(0,0,0,0.10);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, Arial, sans-serif;
   --display: 'Fraunces', Georgia, serif;
   --body: 'Newsreader', Georgia, serif;
@@ -315,9 +311,12 @@ const CSS = String.raw`
 .lib::before {  /* faint plaster wall texture */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.lib::after {  /* gentle warm ambiance (placeholder — proper lighting pass pending references) */
+.lib::after {  /* soft window light on a warm wall (placeholder — real photo pending the files) */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(100% 70% at 50% -10%, rgba(255,236,210,0.18), transparent 60%);
+  background:
+    radial-gradient(66% 52% at 20% -4%, rgba(255,248,229,0.6), transparent 56%),
+    linear-gradient(158deg, rgba(255,249,234,0.34) 0%, transparent 38%),
+    linear-gradient(180deg, transparent 60%, rgba(120,92,54,0.07) 100%);
 }
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
@@ -352,8 +351,8 @@ const CSS = String.raw`
 .dymo { display: inline-block; position: relative; margin: 11px 0 0 22px; padding: 3px 8px 3.5px; border-radius: 1.5px; transform: rotate(-0.5deg);
   background: #f5f4f1;
   box-shadow: 0 0.5px 0.5px rgba(0,0,0,0.06); }  /* tiny outer drop only — no inner shadow */
-.dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
-  letter-spacing: 0.2em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.2em; }
+.dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 6.5px; line-height: 1;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.18em; }
 
 .shelf__stage { position: relative; }
 .shelf__row {
@@ -381,7 +380,7 @@ const CSS = String.raw`
   border-radius: 0 0 4px 2px; }
 .book__warp .cover { position: absolute; left: 0; bottom: 0; width: 100%; height: var(--h); object-fit: cover;
   opacity: 1; transition: none; filter: url(#glassWarp);
-  transform: scale(1.07); transform-origin: 50% 100%; }  /* lens magnification through thick acrylic */
+  transform: scale(1.035); transform-origin: 50% 100%; }  /* gentle lens magnification */
 
 .book__sug { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; z-index: 2;
   background: var(--tint); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.22); }
@@ -413,6 +412,8 @@ const CSS = String.raw`
   position: absolute; left: 12px; right: 12px; bottom: 0; height: 66px; border-radius: 3px; z-index: 3; pointer-events: none;
   box-shadow: 0 9px 11px -6px rgba(45,33,20,0.18), 0 2px 4px -2px rgba(45,33,20,0.14); /* soft cast shadow on the wall */
 }
+.rail__frost { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  -webkit-backdrop-filter: blur(2px) saturate(1.05); backdrop-filter: blur(2px) saturate(1.05); }
 .rail__frame { position: absolute; inset: 0; border-radius: inherit;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--tint) 78%, #fff),         /* saturated edge-lit rim */
