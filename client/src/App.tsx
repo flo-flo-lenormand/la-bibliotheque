@@ -79,6 +79,7 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
 }) {
   return (
     <section className={`shelf ${mounted ? "shelf--in" : ""}`} style={{ "--si": sIdx } as Vars}>
+      <header className="shelf__head"><h2 className="shelf__label">{label}</h2></header>
       <div className="shelf__stage" style={{ "--tint": tint } as Vars}>
         <div className="shelf__row">
           {books.map((b) => {
@@ -96,6 +97,7 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
                 aria-label={`${b.title} — ${b.author}`}
               >
                 <span className="book__plate"><Cover book={b} /></span>
+                <span className="book__warp" aria-hidden><Cover book={b} /></span>
                 {b.status === "suggéré" && <span className="book__sug" title="Suggéré par l'intelligence" />}
               </button>
             );
@@ -109,7 +111,6 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
           <span className="rail__screw rail__screw--l" />
           <span className="rail__screw rail__screw--r" />
         </div>
-        <span className="dymo"><span className="dymo__txt">{label}</span></span>
       </div>
     </section>
   );
@@ -258,6 +259,14 @@ export function App() {
 
   return (
     <div className="lib">
+      {/* refraction map for the acrylic — warps the book covers seen through the glass */}
+      <svg className="defs" aria-hidden width="0" height="0">
+        <filter id="glassWarp" x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.022" numOctaves="2" seed="11" result="n" />
+          <feGaussianBlur in="n" stdDeviation="1.1" result="nb" />
+          <feDisplacementMap in="SourceGraphic" in2="nb" scale="11" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       <main className="lib__main">
         <header className="masthead">
           <span className="masthead__over">My Favourite</span>
@@ -298,6 +307,13 @@ const CSS = String.raw`
 .lib::before {  /* faint plaster wall texture */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.lib::after {  /* warm, natural room light + soft vignette */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(120% 74% at 50% -8%, rgba(255,224,178,0.46), transparent 58%),
+    radial-gradient(85% 65% at 82% 6%, rgba(255,238,205,0.34), transparent 60%),
+    radial-gradient(135% 125% at 50% 60%, transparent 56%, rgba(74,52,28,0.15)); }
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
 .lib__main { max-width: 760px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 30px) 0 calc(env(safe-area-inset-bottom) + 56px); }
@@ -317,18 +333,12 @@ const CSS = String.raw`
 .shelf--in { animation: secIn .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--si) * 90ms); }
 @keyframes secIn { to { opacity: 1; transform: translateY(0); } }
 
-/* DYMO embossed label — black plastic tape, raised off-white letters, stuck on the shelf */
-.dymo { position: absolute; left: 20px; bottom: 13px; z-index: 6; pointer-events: none;
-  padding: 3px 7px 3.5px; border-radius: 3px; transform: rotate(-0.6deg);
-  background: linear-gradient(180deg, #2b2b2d 0%, #161617 48%, #0c0c0d 100%);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0.5px 0 rgba(255,255,255,0.10) inset, 0 -1px 1px rgba(0,0,0,0.6) inset; }
-.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 3px; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.14), transparent 38%); }
-.dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
-  letter-spacing: 0.2em; text-transform: uppercase; color: #e6e4df; padding-right: 0.2em;
-  text-shadow: 0 0.5px 0 rgba(255,255,255,0.45), 0 -0.5px 0.5px rgba(0,0,0,0.85), 0 1px 1px rgba(0,0,0,0.6); }
+/* tiny black section label on the white wall */
+.shelf__head { padding: 0 22px 5px; }
+.shelf__label { margin: 0; font-family: var(--sans); font-weight: 700; font-size: 9.5px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink); }
 
-.shelf__stage { position: relative; padding-top: 4px; }
+.shelf__stage { position: relative; }
 .shelf__row {
   display: flex; align-items: flex-end; gap: 7px;
   padding: 22px 22px 10px; overflow-x: auto; scroll-snap-type: x proximity;
@@ -350,6 +360,13 @@ const CSS = String.raw`
 .book:active .book__plate { transform: translateY(-1px) scale(0.99); }
 .book:focus-visible { outline: none; }
 .book:focus-visible .book__plate { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+
+/* refraction: the lower band of each cover, duplicated and warped, as seen
+   through the thick acrylic (tinted on top by .rail__glass). */
+.book__warp { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; overflow: hidden; z-index: 1;
+  border-radius: 0 0 4px 2px; }
+.book__warp .cover { position: absolute; left: 0; bottom: 0; width: 100%; height: var(--h); object-fit: cover;
+  opacity: 1; transform: none; transition: none; filter: url(#glassWarp); }
 
 .book__sug { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; z-index: 2;
   background: var(--tint); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.22); }
