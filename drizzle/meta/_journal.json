@@ -22,6 +22,13 @@
       "when": 1780300000000,
       "tag": "0003_categories_recurate",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1780400000000,
+      "tag": "0004_goon_cover",
+      "breakpoints": true
     }
   ]
 }

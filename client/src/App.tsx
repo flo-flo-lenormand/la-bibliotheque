@@ -315,28 +315,21 @@ const CSS = String.raw`
 .lib::before {  /* faint plaster wall texture */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.lib::after {  /* the lit wall — a warm lamp washing the room from upper-left */
+.lib::after {  /* gentle warm ambiance (placeholder — proper lighting pass pending references) */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    radial-gradient(86% 66% at 26% -6%, rgba(255,214,156,0.62), transparent 58%),   /* key lamp, upper-left */
-    radial-gradient(58% 48% at 90% 2%, rgba(255,230,186,0.32), transparent 62%),     /* warm fill, upper-right */
-    linear-gradient(180deg, rgba(255,238,214,0.32) 0%, transparent 28%,
-                    rgba(72,49,26,0.05) 66%, rgba(48,32,17,0.15) 100%);              /* top glow → settled warm shadow */
+  background: radial-gradient(100% 70% at 50% -10%, rgba(255,236,210,0.18), transparent 60%);
 }
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
 
-/* cinematic grade laid over the whole set so the light hits the shelves too */
+/* lighting grade — dialled right back; awaiting reference for a proper pass */
 .grade { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
 .grade > span { position: absolute; inset: 0; }
-.grade__glow { mix-blend-mode: soft-light;  /* warm key from the upper-left */
-  background: radial-gradient(78% 70% at 20% -6%, rgba(255,198,124,0.92), rgba(255,210,150,0.18) 46%, transparent 64%); }
-.grade__warm { mix-blend-mode: overlay; opacity: 0.55;  /* directional warm wash + punch */
-  background: linear-gradient(123deg, rgba(255,188,116,0.6) 0%, transparent 46%); }
-.grade__vig { mix-blend-mode: multiply;  /* settled shadow, deepest lower-right */
-  background:
-    radial-gradient(125% 115% at 30% 22%, transparent 44%, rgba(52,34,16,0.20) 82%, rgba(30,18,8,0.40) 100%),
-    radial-gradient(72% 78% at 96% 104%, rgba(30,18,8,0.34), transparent 56%); }
+.grade__glow { mix-blend-mode: soft-light;
+  background: radial-gradient(80% 70% at 28% -8%, rgba(255,214,160,0.30), transparent 62%); }
+.grade__warm { display: none; }
+.grade__vig { mix-blend-mode: multiply;
+  background: radial-gradient(130% 120% at 50% 38%, transparent 66%, rgba(40,28,14,0.08) 100%); }
 .lib__main { max-width: 760px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 30px) 0 calc(env(safe-area-inset-bottom) + 56px); }
 
@@ -356,12 +349,11 @@ const CSS = String.raw`
 @keyframes secIn { to { opacity: 1; transform: translateY(0); } }
 
 /* DYMO embossed label — white plastic tape, black debossed letters — under the shelf */
-.dymo { display: inline-block; margin: 11px 0 0 22px; padding: 3px 8px 3.5px; border-radius: 4px; transform: rotate(-0.7deg);
-  background: linear-gradient(180deg, #fcfcfb 0%, #efefec 55%, #e4e4e0 100%);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.18), inset 0 0.5px 0 rgba(255,255,255,0.9), inset 0 -0.5px 0 rgba(0,0,0,0.12); }
-.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 4px; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.6), transparent 42%); }
-.dymo { position: relative; }
+.dymo { display: inline-block; position: relative; margin: 11px 0 0 22px; padding: 3px 8px 3.5px; border-radius: 1.5px; transform: rotate(-0.5deg);
+  background: linear-gradient(180deg, #fcfcfb 0%, #efefec 55%, #e6e6e2 100%);
+  box-shadow: 0 0.5px 0.5px rgba(0,0,0,0.06), inset 0 0.5px 0 rgba(255,255,255,0.85); }
+.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 1.5px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5), transparent 42%); }
 .dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
   letter-spacing: 0.2em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.2em;
   text-shadow: 0 0.6px 0 rgba(255,255,255,0.85), 0 -0.4px 0.4px rgba(0,0,0,0.28); }

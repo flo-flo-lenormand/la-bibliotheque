@@ -159,11 +159,12 @@ export const Actions = {
           pageCount: 352,
           dateAdded: new Date(),
           category: "Romans",
+          coverUrl: "https://covers.openlibrary.org/b/isbn/9780307477477-L.jpg",
         },
       ];
       let inserted = 0;
       for (const b of books) {
-        const cover = await fetchCoverUrl(b.title, b.author);
+        const cover = ("coverUrl" in b && b.coverUrl) ? b.coverUrl : await fetchCoverUrl(b.title, b.author);
         await db.insert(schema.books).values({
           title: b.title,
           author: b.author,
