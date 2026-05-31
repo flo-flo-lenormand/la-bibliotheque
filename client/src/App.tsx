@@ -99,7 +99,6 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
         </div>
         <div className="rail" aria-hidden>
           <span className="rail__gloss" />
-          <span className="rail__edge" />
           <span className="rail__screw rail__screw--tl" />
           <span className="rail__screw rail__screw--bl" />
           <span className="rail__screw rail__screw--tr" />
@@ -297,9 +296,8 @@ const CSS = String.raw`
 .masthead { text-align: center; padding: 20px 20px 10px; }
 .masthead__over { display: block; font-family: var(--display); font-optical-sizing: auto; font-weight: 400;
   font-size: clamp(18px, 4.8vw, 24px); color: var(--ink); letter-spacing: 0.01em; }
-.masthead__title { margin: -4px 0 0; font-family: var(--display); font-optical-sizing: auto; font-weight: 600;
-  font-variation-settings: 'SOFT' 0, 'WONK' 1; text-transform: uppercase;
-  font-size: clamp(58px, 18vw, 112px); line-height: 0.9; letter-spacing: -0.012em; color: var(--ink); }
+.masthead__title { margin: -2px 0 0; font-family: 'Meteor', var(--display); font-weight: 400;
+  text-transform: uppercase; font-size: clamp(58px, 18vw, 112px); line-height: 0.94; letter-spacing: 0; color: var(--ink); }
 
 .lib__loading { text-align: center; color: var(--muted); padding: 90px 0; font-style: italic; font-family: var(--body); }
 
@@ -362,26 +360,26 @@ const CSS = String.raw`
 /* ---- acrylic rail — realistic frost, bevel, refraction, subtle shadow, iPhone screws ---- */
 .rail {
   position: absolute; left: 14px; right: 14px; bottom: 6px; height: 52px; border-radius: 11px; z-index: 3; pointer-events: none;
+  overflow: hidden;                                  /* clip bevel/gloss/edge to the rounded corners */
   background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 14%, transparent), color-mix(in srgb, var(--tint) 28%, transparent));
   -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
   backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
   box-shadow:
-    inset 0 0.8px 0 rgba(255,255,255,0.95),          /* crisp top bevel */
+    inset 0 0.8px 0 rgba(255,255,255,0.95),          /* crisp top bevel — follows the radius */
+    inset 0 -1px 0 color-mix(in srgb, var(--tint) 40%, rgba(0,0,0,0.18)), /* bottom edge */
     inset 0 0 0 0.5px rgba(255,255,255,0.16),
     0 5px 12px -10px rgba(0,0,0,0.16);               /* whisper drop shadow */
 }
 .rail::before {  /* refraction: soft shadow where the covers enter the acrylic */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; border-radius: 11px 11px 0 0;
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px;
   background: linear-gradient(180deg, rgba(0,0,0,0.10), transparent); }
-.rail__gloss { position: absolute; inset: 1px 1.5px auto 1.5px; height: 30%; border-radius: 10px 10px 14px 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); }
-.rail__edge { position: absolute; left: 1px; right: 1px; bottom: 0; height: 1px; border-radius: 0 0 11px 11px;
-  background: color-mix(in srgb, var(--tint) 55%, rgba(0,0,0,0.25)); opacity: 0.5; }
-.rail__screw { position: absolute; width: 4.5px; height: 4.5px; border-radius: 50%;
-  background: radial-gradient(50% 50% at 40% 34%, #fcfcfe 0%, #d8dade 42%, #abadb3 74%, #8a8c92 100%);
-  box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.95), inset 0 -0.5px 0.5px rgba(0,0,0,0.3), 0 0.5px 1px rgba(0,0,0,0.16); }
-.rail__screw--tl { left: 9px; top: 8px; } .rail__screw--bl { left: 9px; bottom: 8px; }
-.rail__screw--tr { right: 9px; top: 8px; } .rail__screw--br { right: 9px; bottom: 8px; }
+.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 34%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0)); }
+.rail__screw { position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: radial-gradient(50% 50% at 40% 34%, #fcfcfe 0%, #d6d8dc 44%, #a9abb1 76%, #8a8c92 100%);
+  box-shadow: inset 0 0.4px 0.4px rgba(255,255,255,0.95), inset 0 -0.4px 0.4px rgba(0,0,0,0.3), 0 0.5px 0.8px rgba(0,0,0,0.14); }
+.rail__screw--tl { left: 8px; top: 7px; } .rail__screw--bl { left: 8px; bottom: 7px; }
+.rail__screw--tr { right: 8px; top: 7px; } .rail__screw--br { right: 8px; bottom: 7px; }
 
 /* ================================================================== *
  * Reader                                                              *
