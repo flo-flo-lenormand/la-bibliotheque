@@ -268,6 +268,33 @@ export function App() {
           <feDisplacementMap in="SourceGraphic" in2="nb" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
+
+      {/* the lit room: a soft window cast + plant-leaf shadow on a warm wall */}
+      <svg className="scene-bg" viewBox="0 0 900 1600" preserveAspectRatio="xMidYMid slice" aria-hidden>
+        <defs>
+          <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22" /></filter>
+          <filter id="softer" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" /></filter>
+        </defs>
+        {/* sunlit window pane, cast diagonally from the upper-left */}
+        <g filter="url(#soft)">
+          <polygon points="-90,-90 610,-90 505,860 -90,940" fill="#fff7e8" opacity="0.55" />
+        </g>
+        {/* window frame (mullion) shadows crossing the light */}
+        <g filter="url(#softer)" opacity="0.5" fill="#7a5c34">
+          <polygon points="250,-90 300,-90 232,880 182,880" />
+          <polygon points="-90,560 560,486 569,556 -90,632" />
+        </g>
+        {/* plant-leaf shadow, lower-left */}
+        <g filter="url(#softer)" opacity="0.4" fill="#5e4a2c">
+          <ellipse cx="120" cy="1500" rx="150" ry="60" transform="rotate(-18 120 1500)" />
+          <ellipse cx="250" cy="1430" rx="120" ry="46" transform="rotate(14 250 1430)" />
+          <ellipse cx="60" cy="1360" rx="110" ry="44" transform="rotate(-32 60 1360)" />
+          <ellipse cx="300" cy="1540" rx="100" ry="40" transform="rotate(28 300 1540)" />
+          <ellipse cx="180" cy="1330" rx="90" ry="36" transform="rotate(-6 180 1330)" />
+          <rect x="150" y="1340" width="10" height="260" transform="rotate(-10 150 1340)" />
+        </g>
+      </svg>
+
       <main className="lib__main">
         {isPending ? (
           <div className="lib__loading">Ouverture de la bibliothèque…</div>
@@ -311,13 +338,11 @@ const CSS = String.raw`
 .lib::before {  /* faint plaster wall texture */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.lib::after {  /* soft window light on a warm wall (placeholder — real photo pending the files) */
+.lib::after {  /* faint warm settle at the edges, over the lit scene */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    radial-gradient(66% 52% at 20% -4%, rgba(255,248,229,0.6), transparent 56%),
-    linear-gradient(158deg, rgba(255,249,234,0.34) 0%, transparent 38%),
-    linear-gradient(180deg, transparent 60%, rgba(120,92,54,0.07) 100%);
+  background: radial-gradient(140% 120% at 28% 16%, transparent 58%, rgba(108,82,48,0.10) 100%);
 }
+.scene-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
 
