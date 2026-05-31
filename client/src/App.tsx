@@ -79,7 +79,6 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
 }) {
   return (
     <section className={`shelf ${mounted ? "shelf--in" : ""}`} style={{ "--si": sIdx } as Vars}>
-      <header className="shelf__head"><h2 className="shelf__label">{label}</h2></header>
       <div className="shelf__stage" style={{ "--tint": tint } as Vars}>
         <div className="shelf__row">
           {books.map((b) => {
@@ -112,6 +111,7 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
           <span className="rail__screw rail__screw--r" />
         </div>
       </div>
+      <span className="dymo"><span className="dymo__txt">{label}</span></span>
     </section>
   );
 }
@@ -286,6 +286,14 @@ export function App() {
         )}
       </main>
 
+      {/* cinematic colour grade — a warm key from the upper-left and a deep
+          shadow lower-right, laid over the whole set (shelves included). */}
+      <div className="grade" aria-hidden>
+        <span className="grade__glow" />
+        <span className="grade__warm" />
+        <span className="grade__vig" />
+      </div>
+
       {origin && <Reader origin={origin} onClose={() => setOrigin(null)} />}
       <style>{CSS}</style>
     </div>
@@ -307,14 +315,28 @@ const CSS = String.raw`
 .lib::before {  /* faint plaster wall texture */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.lib::after {  /* warm, natural room light + soft vignette */
+.lib::after {  /* the lit wall — a warm lamp washing the room from upper-left */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(120% 74% at 50% -8%, rgba(255,224,178,0.46), transparent 58%),
-    radial-gradient(85% 65% at 82% 6%, rgba(255,238,205,0.34), transparent 60%),
-    radial-gradient(135% 125% at 50% 60%, transparent 56%, rgba(74,52,28,0.15)); }
+    radial-gradient(86% 66% at 26% -6%, rgba(255,214,156,0.62), transparent 58%),   /* key lamp, upper-left */
+    radial-gradient(58% 48% at 90% 2%, rgba(255,230,186,0.32), transparent 62%),     /* warm fill, upper-right */
+    linear-gradient(180deg, rgba(255,238,214,0.32) 0%, transparent 28%,
+                    rgba(72,49,26,0.05) 66%, rgba(48,32,17,0.15) 100%);              /* top glow → settled warm shadow */
+}
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .lib__main { position: relative; z-index: 1; }
+
+/* cinematic grade laid over the whole set so the light hits the shelves too */
+.grade { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+.grade > span { position: absolute; inset: 0; }
+.grade__glow { mix-blend-mode: soft-light;  /* warm key from the upper-left */
+  background: radial-gradient(78% 70% at 20% -6%, rgba(255,198,124,0.92), rgba(255,210,150,0.18) 46%, transparent 64%); }
+.grade__warm { mix-blend-mode: overlay; opacity: 0.55;  /* directional warm wash + punch */
+  background: linear-gradient(123deg, rgba(255,188,116,0.6) 0%, transparent 46%); }
+.grade__vig { mix-blend-mode: multiply;  /* settled shadow, deepest lower-right */
+  background:
+    radial-gradient(125% 115% at 30% 22%, transparent 44%, rgba(52,34,16,0.20) 82%, rgba(30,18,8,0.40) 100%),
+    radial-gradient(72% 78% at 96% 104%, rgba(30,18,8,0.34), transparent 56%); }
 .lib__main { max-width: 760px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 30px) 0 calc(env(safe-area-inset-bottom) + 56px); }
 
@@ -333,10 +355,16 @@ const CSS = String.raw`
 .shelf--in { animation: secIn .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--si) * 90ms); }
 @keyframes secIn { to { opacity: 1; transform: translateY(0); } }
 
-/* tiny black section label on the white wall */
-.shelf__head { padding: 0 22px 5px; }
-.shelf__label { margin: 0; font-family: var(--sans); font-weight: 700; font-size: 9.5px;
-  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink); }
+/* DYMO embossed label — white plastic tape, black debossed letters — under the shelf */
+.dymo { display: inline-block; margin: 11px 0 0 22px; padding: 3px 8px 3.5px; border-radius: 4px; transform: rotate(-0.7deg);
+  background: linear-gradient(180deg, #fcfcfb 0%, #efefec 55%, #e4e4e0 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18), inset 0 0.5px 0 rgba(255,255,255,0.9), inset 0 -0.5px 0 rgba(0,0,0,0.12); }
+.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 4px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), transparent 42%); }
+.dymo { position: relative; }
+.dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.2em;
+  text-shadow: 0 0.6px 0 rgba(255,255,255,0.85), 0 -0.4px 0.4px rgba(0,0,0,0.28); }
 
 .shelf__stage { position: relative; }
 .shelf__row {
@@ -354,9 +382,6 @@ const CSS = String.raw`
   background: #e7e6e3; /* placeholder until the cover fades in */
   box-shadow: 0 0.5px 1px rgba(0,0,0,0.16), 0 11px 18px -12px rgba(0,0,0,0.5), inset 0 0 0 0.5px rgba(0,0,0,0.08);
   transition: transform .42s cubic-bezier(.2,.8,.2,1), box-shadow .42s; will-change: transform; }
-@media (hover: hover) {
-  .book:hover .book__plate { transform: translateY(-5px); box-shadow: 0 0.5px 1px rgba(0,0,0,0.16), 0 22px 30px -16px rgba(0,0,0,0.5); }
-}
 .book:active .book__plate { transform: translateY(-1px) scale(0.99); }
 .book:focus-visible { outline: none; }
 .book:focus-visible .book__plate { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
