@@ -313,13 +313,10 @@ React keys must be passed directly to JSX without using spread:
 
 /* DYMO embossed label — white plastic tape, black debossed letters — under the shelf */
 .dymo { display: inline-block; position: relative; margin: 11px 0 0 22px; padding: 3px 8px 3.5px; border-radius: 1.5px; transform: rotate(-0.5deg);
-  background: linear-gradient(180deg, #fcfcfb 0%, #efefec 55%, #e6e6e2 100%);
-  box-shadow: 0 0.5px 0.5px rgba(0,0,0,0.06), inset 0 0.5px 0 rgba(255,255,255,0.85); }
-.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 1.5px; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.5), transparent 42%); }
+  background: #f5f4f1;
+  box-shadow: 0 0.5px 0.5px rgba(0,0,0,0.06); }  /* tiny outer drop only — no inner shadow */
 .dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
-  letter-spacing: 0.2em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.2em;
-  text-shadow: 0 0.6px 0 rgba(255,255,255,0.85), 0 -0.4px 0.4px rgba(0,0,0,0.28); }
+  letter-spacing: 0.2em; text-transform: uppercase; color: #1b1b1d; padding-right: 0.2em; }
 
 .shelf__stage { position: relative; }
 .shelf__row {
