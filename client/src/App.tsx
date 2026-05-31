@@ -365,17 +365,25 @@ const CSS = String.raw`
   -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
   backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
   box-shadow:
-    inset 0 0.8px 0 rgba(255,255,255,0.95),          /* crisp top bevel — follows the radius */
+    inset 0 0.8px 0 rgba(196,236,255,0.9),            /* cool top edge — blue side of the prism */
+    inset 0 2px 0 -1px rgba(255,214,170,0.5),         /* warm line just beneath — chromatic dispersion */
     inset 0 -1px 0 color-mix(in srgb, var(--tint) 40%, rgba(0,0,0,0.18)), /* bottom edge */
     inset 0 0 0 0.5px rgba(255,255,255,0.16),
-    0 5px 12px -10px rgba(0,0,0,0.16);               /* whisper drop shadow */
+    0 5px 12px -10px rgba(0,0,0,0.16);                /* whisper drop shadow */
 }
 .rail::before {  /* refraction: soft shadow where the covers enter the acrylic */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px;
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; z-index: 1;
   background: linear-gradient(180deg, rgba(0,0,0,0.10), transparent); }
-.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 34%;
+.rail::after {   /* liquid-glass caustics drifting slowly across the surface */
+  content: ""; position: absolute; inset: -30% -40%; z-index: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.45;
+  background:
+    radial-gradient(38% 120% at 28% 50%, rgba(255,255,255,0.55), transparent 62%),
+    radial-gradient(32% 120% at 72% 50%, rgba(255,250,235,0.40), transparent 58%);
+  animation: railCaustic 11s ease-in-out infinite alternate; will-change: transform; }
+@keyframes railCaustic { from { transform: translate3d(-5%,0,0); } to { transform: translate3d(5%,0,0); } }
+.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 34%; z-index: 1;
   background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0)); }
-.rail__screw { position: absolute; width: 4px; height: 4px; border-radius: 50%;
+.rail__screw { position: absolute; z-index: 2; width: 4px; height: 4px; border-radius: 50%;
   background: radial-gradient(50% 50% at 40% 34%, #fcfcfe 0%, #d6d8dc 44%, #a9abb1 76%, #8a8c92 100%);
   box-shadow: inset 0 0.4px 0.4px rgba(255,255,255,0.95), inset 0 -0.4px 0.4px rgba(0,0,0,0.3), 0 0.5px 0.8px rgba(0,0,0,0.14); }
 .rail__screw--tl { left: 8px; top: 7px; } .rail__screw--bl { left: 8px; bottom: 7px; }
@@ -446,5 +454,6 @@ const CSS = String.raw`
 @media (prefers-reduced-motion: reduce) {
   .shelf, .hero__meta, .content, .cover { opacity: 1; transform: none; animation: none; }
   .cover, .book__plate, .reader__sheet, .reader__backdrop, .ghost { transition: none; }
+  .rail::after { animation: none; }
 }
 `;
