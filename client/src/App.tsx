@@ -359,35 +359,39 @@ const CSS = String.raw`
 
 /* ---- acrylic rail — realistic frost, bevel, refraction, subtle shadow, iPhone screws ---- */
 .rail {
-  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 52px; border-radius: 11px; z-index: 3; pointer-events: none;
+  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 54px; border-radius: 12px; z-index: 3; pointer-events: none;
   overflow: hidden;                                  /* clip bevel/gloss/edge to the rounded corners */
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 14%, transparent), color-mix(in srgb, var(--tint) 28%, transparent));
-  -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
-  backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 24%, transparent), color-mix(in srgb, var(--tint) 46%, transparent));
+  -webkit-backdrop-filter: blur(16px) saturate(1.7) brightness(1.06);
+  backdrop-filter: blur(16px) saturate(1.7) brightness(1.06);
   box-shadow:
-    inset 0 0.8px 0 rgba(196,236,255,0.9),            /* cool top edge — blue side of the prism */
-    inset 0 2px 0 -1px rgba(255,214,170,0.5),         /* warm line just beneath — chromatic dispersion */
-    inset 0 -1px 0 color-mix(in srgb, var(--tint) 40%, rgba(0,0,0,0.18)), /* bottom edge */
-    inset 0 0 0 0.5px rgba(255,255,255,0.16),
-    0 5px 12px -10px rgba(0,0,0,0.16);                /* whisper drop shadow */
+    inset 0 1px 0 rgba(205,242,255,0.98),             /* cool top edge — blue side of the prism */
+    inset 0 2.5px 0 -1px rgba(255,202,144,0.65),      /* warm line beneath — chromatic dispersion */
+    inset 0 -1.5px 1px -0.5px color-mix(in srgb, var(--tint) 60%, rgba(0,0,0,0.3)), /* bottom edge */
+    inset 0 0 0 0.5px rgba(255,255,255,0.26),
+    0 6px 16px -10px rgba(0,0,0,0.22);                /* whisper drop shadow */
 }
 .rail::before {  /* refraction: soft shadow where the covers enter the acrylic */
   content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; z-index: 1;
   background: linear-gradient(180deg, rgba(0,0,0,0.10), transparent); }
 .rail::after {   /* liquid-glass caustics drifting slowly across the surface */
-  content: ""; position: absolute; inset: -30% -40%; z-index: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.45;
+  content: ""; position: absolute; inset: -30% -40%; z-index: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.62;
   background:
-    radial-gradient(38% 120% at 28% 50%, rgba(255,255,255,0.55), transparent 62%),
-    radial-gradient(32% 120% at 72% 50%, rgba(255,250,235,0.40), transparent 58%);
+    radial-gradient(36% 130% at 26% 50%, rgba(255,255,255,0.7), transparent 60%),
+    radial-gradient(30% 130% at 70% 50%, rgba(255,250,235,0.55), transparent 56%);
   animation: railCaustic 11s ease-in-out infinite alternate; will-change: transform; }
 @keyframes railCaustic { from { transform: translate3d(-5%,0,0); } to { transform: translate3d(5%,0,0); } }
-.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 34%; z-index: 1;
-  background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0)); }
-.rail__screw { position: absolute; z-index: 2; width: 4px; height: 4px; border-radius: 50%;
-  background: radial-gradient(50% 50% at 40% 34%, #fcfcfe 0%, #d6d8dc 44%, #a9abb1 76%, #8a8c92 100%);
-  box-shadow: inset 0 0.4px 0.4px rgba(255,255,255,0.95), inset 0 -0.4px 0.4px rgba(0,0,0,0.3), 0 0.5px 0.8px rgba(0,0,0,0.14); }
-.rail__screw--tl { left: 8px; top: 7px; } .rail__screw--bl { left: 8px; bottom: 7px; }
-.rail__screw--tr { right: 8px; top: 7px; } .rail__screw--br { right: 8px; bottom: 7px; }
+.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 44%; z-index: 1;
+  background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.06) 72%, transparent); }
+.rail__gloss::after {  /* crisp diagonal specular streak — reads as glass shine */
+  content: ""; position: absolute; top: -10%; bottom: -120%; left: 10%; width: 18%;
+  background: linear-gradient(106deg, transparent, rgba(255,255,255,0.7), transparent);
+  transform: skewX(-20deg); filter: blur(1px); }
+.rail__screw { position: absolute; z-index: 2; width: 2.5px; height: 2.5px; border-radius: 50%;
+  background: #16181b;
+  box-shadow: inset 0 0.3px 0.3px rgba(255,255,255,0.4), 0 0.3px 0.6px rgba(0,0,0,0.4); }
+.rail__screw--tl { left: 7px; top: 6px; } .rail__screw--bl { left: 7px; bottom: 6px; }
+.rail__screw--tr { right: 7px; top: 6px; } .rail__screw--br { right: 7px; bottom: 6px; }
 
 /* ================================================================== *
  * Reader                                                              *
