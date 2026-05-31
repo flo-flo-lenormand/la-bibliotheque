@@ -13,11 +13,11 @@ INSERT INTO books (title, author, cover_image_url, page_count, status, personal_
 VALUES (
   'Middle of the Night',
   'Riley Sager',
-  'https://covers.openlibrary.org/b/isbn/9780593183229-L.jpg',
+  'https://covers.openlibrary.org/b/id/15125995-L.jpg',
   352,
   'suggéré',
   'Thriller nocturne : un ami disparu une nuit d''été ressurgit trente ans plus tard. Tension de banlieue, secrets enfouis, paranoïa douce.',
   (CAST(strftime('%s','now') AS INTEGER) * 1000),
-  '9780593183229',
+  '0593472373',
   'Thriller'
 );
