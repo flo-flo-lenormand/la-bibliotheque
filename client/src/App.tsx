@@ -261,10 +261,10 @@ export function App() {
     <div className="lib">
       {/* refraction map for the acrylic — warps the book covers seen through the glass */}
       <svg className="defs" aria-hidden width="0" height="0">
-        <filter id="glassWarp" x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.022" numOctaves="2" seed="11" result="n" />
-          <feGaussianBlur in="n" stdDeviation="1.1" result="nb" />
-          <feDisplacementMap in="SourceGraphic" in2="nb" scale="11" xChannelSelector="R" yChannelSelector="G" />
+        <filter id="glassWarp" x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.010 0.018" numOctaves="2" seed="11" result="n" />
+          <feGaussianBlur in="n" stdDeviation="1.6" result="nb" />
+          <feDisplacementMap in="SourceGraphic" in2="nb" scale="26" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
       <main className="lib__main">
@@ -366,7 +366,8 @@ const CSS = String.raw`
 .book__warp { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; overflow: hidden; z-index: 1;
   border-radius: 0 0 4px 2px; }
 .book__warp .cover { position: absolute; left: 0; bottom: 0; width: 100%; height: var(--h); object-fit: cover;
-  opacity: 1; transform: none; transition: none; filter: url(#glassWarp); }
+  opacity: 1; transition: none; filter: url(#glassWarp);
+  transform: scale(1.07); transform-origin: 50% 100%; }  /* lens magnification through thick acrylic */
 
 .book__sug { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; z-index: 2;
   background: var(--tint); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.22); }
