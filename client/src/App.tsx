@@ -13,9 +13,12 @@ function hash(s: string) {
   return h >>> 0;
 }
 
-// Refined acrylic tints — each shelf gets one deterministically by name.
-const TINTS = ["#E8941F", "#3E8FD6", "#5FAE83", "#D9655B", "#9B7BD0", "#46B2AC", "#D8A93B", "#C77FA6"];
-const tintFor = (name: string) => TINTS[hash(name) % TINTS.length]!;
+// Curated, deliberately-distinct acrylic tints — assigned by shelf order so
+// neighbouring shelves never clash (amber, blue, green, terracotta, violet, teal).
+const SHELF_TINTS = ["#E0922A", "#3E8FD6", "#4FA08A", "#C8584B", "#8E76C4", "#46B2AC"];
+
+// Whisper-quiet haptic for supported devices.
+const haptic = (ms = 7) => { try { navigator.vibrate?.(ms); } catch { /* unsupported */ } };
 
 // Editorial palettes for generated covers (books without an image).
 const COVERS = [
@@ -30,10 +33,13 @@ const COVERS = [
 ];
 const coverStyle = (b: Book) => COVERS[hash(`${b.id}:${b.title}`) % COVERS.length]!;
 
-/* A cover — a real image, or a clean generated one. Fills its container. */
+/* A cover — a real image (blur-up fade-in), or a clean generated one. */
 function Cover({ book }: { book: Book }) {
+  const [loaded, setLoaded] = useState(false);
   if (book.cover_image_url) {
-    return <img className="cover" src={book.cover_image_url} alt={`${book.title} — ${book.author}`} loading="lazy" draggable={false} />;
+    return <img className={`cover ${loaded ? "is-loaded" : ""}`} src={book.cover_image_url}
+      alt={`${book.title} — ${book.author}`} loading="lazy" draggable={false}
+      onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />;
   }
   const c = coverStyle(book);
   return (
@@ -79,12 +85,13 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
               key={b.id}
               className="book"
               onClick={(e) => {
+                haptic();
                 const cover = e.currentTarget.querySelector(".cover");
                 onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
               }}
               aria-label={`${b.title} — ${b.author}`}
             >
-              <Cover book={b} />
+              <span className="book__plate"><Cover book={b} /></span>
               {b.status === "suggéré" && <span className="book__sug" title="Suggéré par l'intelligence" />}
             </button>
           ))}
@@ -92,8 +99,11 @@ function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
         </div>
         <div className="rail" aria-hidden>
           <span className="rail__gloss" />
-          <span className="rail__screw rail__screw--l" />
-          <span className="rail__screw rail__screw--r" />
+          <span className="rail__edge" />
+          <span className="rail__screw rail__screw--tl" />
+          <span className="rail__screw rail__screw--bl" />
+          <span className="rail__screw rail__screw--tr" />
+          <span className="rail__screw rail__screw--br" />
         </div>
       </div>
     </section>
@@ -149,7 +159,7 @@ function Reader({ origin, onClose }: { origin: Origin; onClose: () => void }) {
   const onScroll = () => {
     const el = pagerRef.current; if (!el) return;
     const p = Math.round(el.scrollLeft / el.clientWidth);
-    if (p !== page) { setPage(p); playPageTurn(); }
+    if (p !== page) { setPage(p); playPageTurn(); haptic(); }
   };
 
   const dateStr = new Date(book.date_added).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -183,8 +193,7 @@ function Reader({ origin, onClose }: { origin: Origin; onClose: () => void }) {
             <div className={`hero__meta ${open ? "is-open" : ""}`}>
               <h1 className="hero__title">{book.title}</h1>
               <p className="hero__author">{book.author}</p>
-              <span className={`chip ${isSuggest ? "chip--sug" : "chip--lu"}`}>{isSuggest ? "Suggéré par l'intelligence" : "Lu"}</span>
-              <button className="hero__more" onClick={() => goTo(1)}>{isSuggest ? "Pourquoi le lire" : "Lire la note"} ›</button>
+              <span className={`chip ${isSuggest ? "chip--sug" : "chip--lu"}`}>{isSuggest ? "Suggéré" : "Lu"}</span>
             </div>
           </section>
 
@@ -238,7 +247,7 @@ export function App() {
       if (arr) arr.push(b); else map.set(key, [b]);
     }
     return [...map.entries()]
-      .map(([name, list]) => ({ name, list, tint: tintFor(name) }))
+      .map(([name, list]) => ({ name, list }))
       .sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
   }, [books]);
 
@@ -257,7 +266,7 @@ export function App() {
         ) : (
           <div className="shelves">
             {shelves.map((s, i) => (
-              <Shelf key={s.name} label={s.name} books={s.list} tint={s.tint} sIdx={i} mounted={mounted} onOpen={setOrigin} />
+              <Shelf key={s.name} label={s.name} books={s.list} tint={SHELF_TINTS[i % SHELF_TINTS.length]!} sIdx={i} mounted={mounted} onOpen={setOrigin} />
             ))}
           </div>
         )}
@@ -274,7 +283,7 @@ const CSS = String.raw`
 
 .lib *, .reader * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .lib {
-  --bg: #ECECEC; --card: #F5F5F4; --ink: #1A1A1D; --muted: #98989E; --line: rgba(0,0,0,0.07);
+  --bg: #ECECEC; --card: #F5F5F4; --ink: #1A1A1D; --muted: #98989E; --line: rgba(0,0,0,0.10);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, Arial, sans-serif;
   --display: 'Fraunces', Georgia, serif;
   --body: 'Newsreader', Georgia, serif;
@@ -314,51 +323,65 @@ const CSS = String.raw`
 .shelf__stage { position: relative; }
 .shelf__row {
   display: flex; align-items: flex-end; gap: 5px;
-  padding: 18px 22px 14px; overflow-x: auto; scroll-snap-type: x proximity;
+  padding: 20px 22px 12px; overflow-x: auto; scroll-snap-type: x proximity;
   scrollbar-width: none; -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
 }
 .shelf__row::-webkit-scrollbar { display: none; }
-.shelf__pad { flex: 0 0 17px; }
+.shelf__pad { flex: 0 0 16px; }
 
 /* covers (face-out) */
-.book { position: relative; flex: 0 0 auto; width: 118px; height: 177px; border: 0; padding: 0; background: none;
-  cursor: pointer; scroll-snap-align: center; transform: translateZ(0); }
-.book__sug { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--tint); box-shadow: 0 0 0 2px rgba(255,255,255,0.55), 0 1px 2px rgba(0,0,0,0.25); opacity: 0.92; }
-
-.cover { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px 3.5px 3.5px 2px;
-  box-shadow: 0 0.5px 1px rgba(0,0,0,0.18), 0 8px 16px -10px rgba(0,0,0,0.45), inset 0 0 0 0.5px rgba(0,0,0,0.1);
-  transition: transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s; }
+.book { position: relative; flex: 0 0 auto; width: 124px; height: 186px; border: 0; padding: 0; background: none;
+  cursor: pointer; scroll-snap-align: center; }
+.book__plate { display: block; width: 100%; height: 100%; border-radius: 2px 4px 4px 2px; overflow: hidden;
+  background: #e7e6e3; /* placeholder until the cover fades in */
+  box-shadow: 0 0.5px 1px rgba(0,0,0,0.16), 0 11px 18px -12px rgba(0,0,0,0.5), inset 0 0 0 0.5px rgba(0,0,0,0.08);
+  transition: transform .42s cubic-bezier(.2,.8,.2,1), box-shadow .42s; will-change: transform; }
 @media (hover: hover) {
-  .book:hover .cover { transform: translateY(-4px); box-shadow: 0 0.5px 1px rgba(0,0,0,0.18), 0 16px 24px -14px rgba(0,0,0,0.5); }
+  .book:hover .book__plate { transform: translateY(-5px); box-shadow: 0 0.5px 1px rgba(0,0,0,0.16), 0 22px 30px -16px rgba(0,0,0,0.5); }
 }
-.book:active .cover { transform: translateY(-1px) scale(0.985); }
+.book:active .book__plate { transform: translateY(-1px) scale(0.99); }
+.book:focus-visible { outline: none; }
+.book:focus-visible .book__plate { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+
+.book__sug { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; z-index: 2;
+  background: var(--tint); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.22); }
+
+.cover { display: block; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transform: scale(1.02); transition: opacity .6s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+.cover.is-loaded { opacity: 1; transform: none; }
 
 .cover--proc { container-type: inline-size; display: flex; flex-direction: column; justify-content: space-between;
-  padding: 11% 10%; background: var(--pc-bg); color: var(--pc-fg); }
+  padding: 11% 10%; background: var(--pc-bg); color: var(--pc-fg); opacity: 1; transform: none; }
 .cover-proc__mark { width: 20cqw; height: 4.5cqw; border-radius: 1px; background: var(--pc-mark); }
 .cover-proc__title { font-family: var(--sans); font-weight: 700; font-size: 12cqw; line-height: 1.06; letter-spacing: -0.01em;
   display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .cover-proc__author { font-size: 4.6cqw; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82; }
 
-/* ---- acrylic rail — taller, realistic frost, subtle shadow, tiny screws ---- */
+/* ---- acrylic rail — realistic frost, bevel, refraction, subtle shadow, iPhone screws ---- */
 .rail {
-  position: absolute; left: 14px; right: 14px; bottom: 4px; height: 60px; border-radius: 11px; z-index: 3; pointer-events: none;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, transparent), color-mix(in srgb, var(--tint) 30%, transparent));
-  -webkit-backdrop-filter: blur(9px) saturate(1.25) brightness(1.02);
-  backdrop-filter: blur(9px) saturate(1.25) brightness(1.02);
+  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 52px; border-radius: 11px; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 14%, transparent), color-mix(in srgb, var(--tint) 28%, transparent));
+  -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
+  backdrop-filter: blur(10px) saturate(1.3) brightness(1.03);
   box-shadow:
-    inset 0 0.5px 0 rgba(255,255,255,0.85),
-    inset 0 -0.5px 0 color-mix(in srgb, var(--tint) 45%, transparent),
-    inset 0 0 0 0.5px rgba(255,255,255,0.18),
-    0 8px 16px -12px color-mix(in srgb, var(--tint) 60%, rgba(0,0,0,0.4));
+    inset 0 0.8px 0 rgba(255,255,255,0.95),          /* crisp top bevel */
+    inset 0 0 0 0.5px rgba(255,255,255,0.16),
+    0 5px 12px -10px rgba(0,0,0,0.16);               /* whisper drop shadow */
 }
-.rail__gloss { position: absolute; inset: 1px 1px auto 1px; height: 46%; border-radius: 10px 10px 16px 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0)); }
-.rail__screw { position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-50%);
-  background: radial-gradient(50% 50% at 42% 34%, #ffffff 0%, #e9eaec 28%, #c2c4c9 62%, #9a9ca2 100%);
-  box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.9), inset 0 -0.5px 0.5px rgba(0,0,0,0.28), 0 0.5px 1px rgba(0,0,0,0.18); }
-.rail__screw--l { left: 11px; } .rail__screw--r { right: 11px; }
+.rail::before {  /* refraction: soft shadow where the covers enter the acrylic */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; border-radius: 11px 11px 0 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.10), transparent); }
+.rail__gloss { position: absolute; inset: 1px 1.5px auto 1.5px; height: 30%; border-radius: 10px 10px 14px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); }
+.rail__edge { position: absolute; left: 1px; right: 1px; bottom: 0; height: 1px; border-radius: 0 0 11px 11px;
+  background: color-mix(in srgb, var(--tint) 55%, rgba(0,0,0,0.25)); opacity: 0.5; }
+.rail__screw { position: absolute; width: 4.5px; height: 4.5px; border-radius: 50%;
+  background: radial-gradient(50% 50% at 40% 34%, #fcfcfe 0%, #d8dade 42%, #abadb3 74%, #8a8c92 100%);
+  box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.95), inset 0 -0.5px 0.5px rgba(0,0,0,0.3), 0 0.5px 1px rgba(0,0,0,0.16); }
+.rail__screw--tl { left: 9px; top: 8px; } .rail__screw--bl { left: 9px; bottom: 8px; }
+.rail__screw--tr { right: 9px; top: 8px; } .rail__screw--br { right: 9px; bottom: 8px; }
 
 /* ================================================================== *
  * Reader                                                              *
@@ -401,9 +424,6 @@ const CSS = String.raw`
   text-transform: uppercase; padding: 7px 14px; border-radius: 999px; }
 .chip--lu { background: rgba(46,125,91,0.13); color: #2C7355; }
 .chip--sug { background: rgba(62,143,214,0.15); color: #2C77B6; }
-.hero__more { margin-top: 28px; border: none; background: none; cursor: pointer; font-family: var(--sans);
-  font-size: 14px; color: var(--ink); opacity: 0.6; transition: opacity .2s; }
-.hero__more:hover { opacity: 1; }
 
 /* content page */
 .rpage--content { padding-top: 22px; }
@@ -426,7 +446,7 @@ const CSS = String.raw`
 .reader__dots button.is-on { background: var(--ink); width: 20px; border-radius: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .shelf, .hero__meta, .content { opacity: 1; transform: none; animation: none; }
-  .cover, .reader__sheet, .reader__backdrop, .ghost { transition: none; }
+  .shelf, .hero__meta, .content, .cover { opacity: 1; transform: none; animation: none; }
+  .cover, .book__plate, .reader__sheet, .reader__backdrop, .ghost { transition: none; }
 }
 `;
