@@ -42,6 +42,7 @@ export const Actions = {
         personal_note: z.string().nullable(),
         date_added: z.string(),
         isbn: z.string().nullable(),
+        category: z.string().nullable(),
       })),
     }),
     async handler(ctx) {
@@ -58,6 +59,7 @@ export const Actions = {
           personal_note: r.personalNote,
           date_added: r.dateAdded.toISOString(),
           isbn: r.isbn,
+          category: r.category,
         })),
       };
     },
@@ -73,6 +75,7 @@ export const Actions = {
       isbn: z.string().optional(),
       date_added: z.string().datetime().optional(),
       cover_image_url: z.string().url().optional(),
+      category: z.string().optional(),
     }),
     response: z.object({ id: z.number() }),
     async handler(ctx, args) {
@@ -91,6 +94,7 @@ export const Actions = {
         personalNote: args.personal_note ?? null,
         dateAdded: date,
         isbn: args.isbn ?? null,
+        category: args.category ?? null,
       }).returning({ id: schema.books.id });
       const inserted = result[0];
       if (!inserted) throw new Error("Insert failed");
@@ -109,6 +113,7 @@ export const Actions = {
       page_count: z.number().int().positive().optional(),
       isbn: z.string().optional(),
       cover_image_url: z.string().url().optional(),
+      category: z.string().optional(),
     }),
     response: z.object({ ok: z.boolean() }),
     async handler(ctx, args) {
@@ -121,6 +126,7 @@ export const Actions = {
       if (args.page_count !== undefined) updates.pageCount = args.page_count;
       if (args.isbn !== undefined) updates.isbn = args.isbn;
       if (args.cover_image_url !== undefined) updates.coverImageUrl = args.cover_image_url;
+      if (args.category !== undefined) updates.category = args.category;
       if (Object.keys(updates).length === 0) return { ok: true };
       await db.update(schema.books).set(updates).where(eq(schema.books.id, args.id));
       ctx.invalidateQueries();
@@ -143,6 +149,7 @@ export const Actions = {
           personalNote: "Deux créatifs qui construisent ensemble sur 30 ans. La collaboration, l'amitié, le craft comme obsession.",
           pageCount: 416,
           dateAdded: new Date("2026-05-29T00:00:00Z"),
+          category: "Romans",
         },
         {
           title: "A Visit from the Goon Squad",
@@ -151,6 +158,7 @@ export const Actions = {
           personalNote: "Des vies créatives qui s'entrelacent sur des décennies. Structure inventive, le temps comme personnage principal. Dans la lignée de Zevin.",
           pageCount: 352,
           dateAdded: new Date(),
+          category: "Romans",
         },
       ];
       let inserted = 0;
@@ -165,6 +173,7 @@ export const Actions = {
           personalNote: b.personalNote,
           dateAdded: b.dateAdded,
           isbn: null,
+          category: b.category,
         });
         inserted++;
       }

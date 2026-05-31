@@ -12,4 +12,5 @@ export const books = sqliteTable("books", {
     .notNull()
     .$defaultFn(() => new Date()),
   isbn: text("isbn"),
+  category: text("category"),
 });

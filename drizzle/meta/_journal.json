@@ -15,6 +15,13 @@
       "when": 1780122666749,
       "tag": "0002_create_books_table",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1780300000000,
+      "tag": "0003_categories_recurate",
+      "breakpoints": true
     }
   ]
 }

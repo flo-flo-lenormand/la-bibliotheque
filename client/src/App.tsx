@@ -1,45 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type ApiResponse } from "./api";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { CSSProperties } from "react";
 import { playPageTurn } from "./sounds";
 
 type Book = ApiResponse<typeof api, "list_books">["books"][number];
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
-/* ------------------------------------------------------------------ *
- * Deterministic cover styling for books without an image.             *
- * ------------------------------------------------------------------ */
 function hash(s: string) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
 }
-// Bright, editorial cover palettes (à la Rams / Bauhaus / Penguin).
+
+// Refined acrylic tints — each shelf gets one deterministically by name.
+const TINTS = ["#E8941F", "#3E8FD6", "#5FAE83", "#D9655B", "#9B7BD0", "#46B2AC", "#D8A93B", "#C77FA6"];
+const tintFor = (name: string) => TINTS[hash(name) % TINTS.length]!;
+
+// Editorial palettes for generated covers (books without an image).
 const COVERS = [
   { bg: "#E1462C", fg: "#FFFFFF", mark: "#F4C20D" },
   { bg: "#F4C20D", fg: "#1A1A1A", mark: "#E1462C" },
-  { bg: "#1455B0", fg: "#FFFFFF", mark: "#F4C20D" },
-  { bg: "#141414", fg: "#FFFFFF", mark: "#E1462C" },
-  { bg: "#EFEADD", fg: "#1A1A1A", mark: "#1455B0" },
+  { bg: "#15489E", fg: "#FFFFFF", mark: "#F4C20D" },
+  { bg: "#161616", fg: "#FFFFFF", mark: "#E1462C" },
+  { bg: "#EFEADD", fg: "#1A1A1A", mark: "#15489E" },
   { bg: "#2E7D5B", fg: "#FFFFFF", mark: "#F4C20D" },
-  { bg: "#D9772B", fg: "#1A1A1A", mark: "#141414" },
-  { bg: "#7A3E8E", fg: "#FFFFFF", mark: "#F4C20D" },
+  { bg: "#D9772B", fg: "#1A1A1A", mark: "#161616" },
+  { bg: "#6E3A86", fg: "#FFFFFF", mark: "#F4C20D" },
 ];
-function coverStyle(book: Book) {
-  return COVERS[hash(`${book.id}:${book.title}`) % COVERS.length]!;
-}
+const coverStyle = (b: Book) => COVERS[hash(`${b.id}:${b.title}`) % COVERS.length]!;
 
-/* ------------------------------------------------------------------ *
- * Cover — a real image, or a clean generated cover.                    *
- * ------------------------------------------------------------------ */
-function Cover({ book, className = "" }: { book: Book; className?: string }) {
+/* A cover — a real image, or a clean generated one. Fills its container. */
+function Cover({ book }: { book: Book }) {
   if (book.cover_image_url) {
-    return <img className={`cover ${className}`} src={book.cover_image_url} alt={`${book.title} — ${book.author}`} loading="lazy" />;
+    return <img className="cover" src={book.cover_image_url} alt={`${book.title} — ${book.author}`} loading="lazy" draggable={false} />;
   }
   const c = coverStyle(book);
   return (
-    <div className={`cover cover--proc ${className}`} style={{ "--pc-bg": c.bg, "--pc-fg": c.fg, "--pc-mark": c.mark } as Vars}
+    <div className="cover cover--proc" style={{ "--pc-bg": c.bg, "--pc-fg": c.fg, "--pc-mark": c.mark } as Vars}
       role="img" aria-label={`${book.title} — ${book.author}`}>
       <span className="cover-proc__mark" />
       <span className="cover-proc__title">{book.title}</span>
@@ -48,19 +46,21 @@ function Cover({ book, className = "" }: { book: Book; className?: string }) {
   );
 }
 
+type Origin = { book: Book; rect: DOMRect | null };
+
 /* ------------------------------------------------------------------ *
- * A shelf — section head + scrollable face-out covers + acrylic rail.  *
+ * Shelf — section head + face-out covers on a translucent acrylic rail *
  * ------------------------------------------------------------------ */
-function Shelf({ label, books, tint, mounted, onOpen }: {
-  label: string; books: Book[]; tint: string; mounted: boolean; onOpen: (b: Book) => void;
+function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
+  label: string; books: Book[]; tint: string; mounted: boolean; sIdx: number; onOpen: (o: Origin) => void;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
   const nudge = (dir: number) => {
     const el = rowRef.current;
-    if (el) el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 280), behavior: "smooth" });
+    if (el) el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 300), behavior: "smooth" });
   };
   return (
-    <section className="shelf">
+    <section className={`shelf ${mounted ? "shelf--in" : ""}`} style={{ "--si": sIdx } as Vars}>
       <header className="shelf__head">
         <h2 className="shelf__label">{label}</h2>
         <div className="shelf__meta">
@@ -72,68 +72,82 @@ function Shelf({ label, books, tint, mounted, onOpen }: {
         </div>
       </header>
 
-      <div className="shelf__stage">
-        {books.length === 0 ? (
-          <div className="shelf__empty">L'intelligence n'a encore rien déposé ici.</div>
-        ) : (
-          <>
-            <div className="shelf__row" ref={rowRef}>
-              {books.map((b, i) => (
-                <button
-                  key={b.id}
-                  className={`book ${mounted ? "book--in" : ""}`}
-                  style={{ "--i": i } as Vars}
-                  onClick={() => onOpen(b)}
-                  aria-label={`${b.title} — ${b.author}`}
-                >
-                  <Cover book={b} />
-                </button>
-              ))}
-              <span className="shelf__pad" aria-hidden />
-            </div>
-            <div className="rail" style={{ "--tint": tint } as Vars} aria-hidden>
-              <span className="rail__screw rail__screw--l" />
-              <span className="rail__screw rail__screw--r" />
-              <span className="rail__gloss" />
-            </div>
-          </>
-        )}
+      <div className="shelf__stage" style={{ "--tint": tint } as Vars}>
+        <div className="shelf__row" ref={rowRef}>
+          {books.map((b) => (
+            <button
+              key={b.id}
+              className="book"
+              onClick={(e) => {
+                const cover = e.currentTarget.querySelector(".cover");
+                onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
+              }}
+              aria-label={`${b.title} — ${b.author}`}
+            >
+              <Cover book={b} />
+              {b.status === "suggéré" && <span className="book__sug" title="Suggéré par l'intelligence" />}
+            </button>
+          ))}
+          <span className="shelf__pad" aria-hidden />
+        </div>
+        <div className="rail" aria-hidden>
+          <span className="rail__gloss" />
+          <span className="rail__screw rail__screw--l" />
+          <span className="rail__screw rail__screw--r" />
+        </div>
       </div>
     </section>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Reader — slides up; cover on page 1, content on page 2.              *
+ * Reader — the tapped cover flies up (FLIP); page 1 cover, page 2 rest *
  * ------------------------------------------------------------------ */
-function Reader({ book, onClose }: { book: Book; onClose: () => void }) {
+function Reader({ origin, onClose }: { origin: Origin; onClose: () => void }) {
+  const book = origin.book;
   const [open, setOpen] = useState(false);
+  const [landed, setLanded] = useState(!origin.rect);
   const [page, setPage] = useState(0);
   const pagerRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const ghostRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const a = requestAnimationFrame(() => setOpen(true));
+  // Shared-element open: a ghost cover travels from the shelf to the hero.
+  useLayoutEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { cancelAnimationFrame(a); document.body.style.overflow = prev; };
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const hero = heroRef.current, ghost = ghostRef.current;
+    if (!origin.rect || !hero || !ghost || reduced) {
+      setOpen(true); setLanded(true);
+      return () => { document.body.style.overflow = prev; };
+    }
+    const o = origin.rect;
+    const t = hero.getBoundingClientRect();
+    const dx = t.left - o.left, dy = t.top - o.top;
+    const sx = t.width / o.width, sy = t.height / o.height;
+    ghost.style.transform = "translate(0,0) scale(1)";
+    ghost.style.transition = "none";
+    void ghost.offsetWidth;
+    const id = requestAnimationFrame(() => {
+      setOpen(true);
+      ghost.style.transition = "transform .56s cubic-bezier(.16,1,.3,1)";
+      ghost.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    });
+    return () => { cancelAnimationFrame(id); document.body.style.overflow = prev; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const close = useCallback(() => { setOpen(false); setTimeout(onClose, 380); }, [onClose]);
-
+  const close = useCallback(() => { setOpen(false); setTimeout(onClose, 360); }, [onClose]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
 
-  const goTo = (p: number) => {
-    const el = pagerRef.current;
-    if (!el) return;
-    el.scrollTo({ left: p * el.clientWidth, behavior: "smooth" });
-  };
+  const goTo = (p: number) => pagerRef.current?.scrollTo({ left: p * pagerRef.current.clientWidth, behavior: "smooth" });
   const onScroll = () => {
-    const el = pagerRef.current;
-    if (!el) return;
+    const el = pagerRef.current; if (!el) return;
     const p = Math.round(el.scrollLeft / el.clientWidth);
     if (p !== page) { setPage(p); playPageTurn(); }
   };
@@ -145,34 +159,44 @@ function Reader({ book, onClose }: { book: Book; onClose: () => void }) {
   return (
     <div className="reader" role="dialog" aria-modal="true" aria-label={book.title}>
       <div className={`reader__backdrop ${open ? "is-open" : ""}`} onClick={close} />
+
+      {origin.rect && !landed && (
+        <div ref={ghostRef} className="ghost" onTransitionEnd={() => setLanded(true)}
+          style={{ left: origin.rect.left, top: origin.rect.top, width: origin.rect.width, height: origin.rect.height }}>
+          <Cover book={book} />
+        </div>
+      )}
+
       <div className={`reader__sheet ${open ? "is-open" : ""}`}>
         <header className="reader__bar">
-          <button className="reader__icon" onClick={close} aria-label="Fermer">‹</button>
-          <span className="reader__crumb">{isSuggest ? "Suggéré" : "Lu"}</span>
+          <button className="reader__icon" onClick={close} aria-label="Retour">‹</button>
+          <span className="reader__crumb">{book.category || (isSuggest ? "Suggéré" : "Lu")}</span>
           <button className="reader__icon" onClick={close} aria-label="Fermer">✕</button>
         </header>
 
         <div className="reader__pager" ref={pagerRef} onScroll={onScroll}>
           {/* PAGE 1 — the cover */}
           <section className="rpage rpage--cover">
-            <div className="hero">
-              <Cover book={book} className="hero__cover" />
+            <div ref={heroRef} className="hero" style={{ visibility: landed ? "visible" : "hidden" }}>
+              <Cover book={book} />
             </div>
-            <h1 className="hero__title">{book.title}</h1>
-            <p className="hero__author">{book.author}</p>
-            <span className={`chip ${isSuggest ? "chip--sug" : "chip--lu"}`}>{isSuggest ? "Suggéré par l'intelligence" : "Lu"}</span>
-            <button className="hero__more" onClick={() => goTo(1)}>Lire la note ›</button>
+            <div className={`hero__meta ${open ? "is-open" : ""}`}>
+              <h1 className="hero__title">{book.title}</h1>
+              <p className="hero__author">{book.author}</p>
+              <span className={`chip ${isSuggest ? "chip--sug" : "chip--lu"}`}>{isSuggest ? "Suggéré par l'intelligence" : "Lu"}</span>
+              <button className="hero__more" onClick={() => goTo(1)}>{isSuggest ? "Pourquoi le lire" : "Lire la note"} ›</button>
+            </div>
           </section>
 
           {/* PAGE 2 — everything else */}
           <section className="rpage rpage--content">
-            <div className="content">
+            <div className={`content ${open ? "is-open" : ""}`}>
               <span className="kicker">{isSuggest ? "Pourquoi le lire" : "Note de lecture"}</span>
               <p className="note"><span className="note__drop">{note.charAt(0)}</span>{note.slice(1)}</p>
               <div className="sign">— {isSuggest ? "l'intelligence" : "le lecteur"} · {dateStr}</div>
-
               <dl className="facts">
                 <div><dt>Auteur·ice</dt><dd>{book.author}</dd></div>
+                {book.category && <div><dt>Style</dt><dd>{book.category}</dd></div>}
                 <div><dt>État</dt><dd>{isSuggest ? "Suggéré" : "Lu"}</dd></div>
                 {book.page_count != null && <div><dt>Pages</dt><dd>{book.page_count}</dd></div>}
                 {book.isbn && <div><dt>ISBN</dt><dd>{book.isbn}</dd></div>}
@@ -181,7 +205,7 @@ function Reader({ book, onClose }: { book: Book; onClose: () => void }) {
           </section>
         </div>
 
-        <div className="reader__dots">
+        <div className={`reader__dots ${open ? "is-open" : ""}`}>
           {[0, 1].map((p) => (
             <button key={p} className={p === page ? "is-on" : ""} onClick={() => goTo(p)} aria-label={`Page ${p + 1}`} />
           ))}
@@ -198,185 +222,211 @@ export function App() {
   const { data, isPending } = useQuery({ queryKey: ["books"], queryFn: () => api.list_books({}) });
   const books = data?.books ?? [];
 
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const active = useMemo(() => books.find((b) => b.id === activeId) ?? null, [books, activeId]);
+  const [origin, setOrigin] = useState<Origin | null>(null);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    if (!isPending) { const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }
+    if (!isPending) { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t); }
   }, [isPending]);
 
-  const lus = useMemo(() => books.filter((b) => b.status !== "suggéré"), [books]);
-  const sugg = useMemo(() => books.filter((b) => b.status === "suggéré"), [books]);
+  // Shelves adapt to the books' style: group by category, fall back to status.
+  const shelves = useMemo(() => {
+    const map = new Map<string, Book[]>();
+    for (const b of books) {
+      const key = b.category && b.category.trim() ? b.category.trim() : (b.status === "suggéré" ? "Suggérés" : "Lus");
+      const arr = map.get(key);
+      if (arr) arr.push(b); else map.set(key, [b]);
+    }
+    return [...map.entries()]
+      .map(([name, list]) => ({ name, list, tint: tintFor(name) }))
+      .sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+  }, [books]);
 
   return (
     <div className="lib">
       <main className="lib__main">
         <header className="masthead">
-          <span className="masthead__over">Ma collection de</span>
-          <h1 className="masthead__title">Livres</h1>
-          <p className="masthead__sub">lus &amp; suggérés par l'intelligence</p>
+          <span className="masthead__over">My Favourite</span>
+          <h1 className="masthead__title">Books</h1>
         </header>
 
         {isPending ? (
           <div className="lib__loading">Ouverture de la bibliothèque…</div>
+        ) : shelves.length === 0 ? (
+          <div className="lib__loading">L'intelligence n'a encore rien déposé.</div>
         ) : (
           <div className="shelves">
-            <Shelf label="Lus" books={lus} tint="#E8941F" mounted={mounted} onOpen={(b) => setActiveId(b.id)} />
-            <Shelf label="Suggérés" books={sugg} tint="#3E92D6" mounted={mounted} onOpen={(b) => setActiveId(b.id)} />
+            {shelves.map((s, i) => (
+              <Shelf key={s.name} label={s.name} books={s.list} tint={s.tint} sIdx={i} mounted={mounted} onOpen={setOrigin} />
+            ))}
           </div>
         )}
       </main>
 
-      {active && <Reader book={active} onClose={() => setActiveId(null)} />}
+      {origin && <Reader origin={origin} onClose={() => setOrigin(null)} />}
       <style>{CSS}</style>
     </div>
   );
 }
 
 const CSS = String.raw`
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
 
 .lib *, .reader * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .lib {
-  --bg: #ECE9E3; --card: #F6F4EF; --ink: #161514; --muted: #9C978C; --line: rgba(0,0,0,0.08);
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --serif: 'Playfair Display', Georgia, serif;
+  --bg: #ECECEC; --card: #F5F5F4; --ink: #1A1A1D; --muted: #98989E; --line: rgba(0,0,0,0.07);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, Arial, sans-serif;
+  --display: 'Fraunces', Georgia, serif;
   --body: 'Newsreader', Georgia, serif;
   min-height: 100vh; background: var(--bg); color: var(--ink);
-  font-family: var(--sans); -webkit-font-smoothing: antialiased;
+  font-family: var(--sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 .lib__main { max-width: 760px; margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 26px) 0 calc(env(safe-area-inset-bottom) + 50px); }
+  padding: calc(env(safe-area-inset-top) + 30px) 0 calc(env(safe-area-inset-bottom) + 56px); }
 
 /* ---- masthead ---- */
-.masthead { text-align: center; padding: 16px 20px 8px; }
-.masthead__over { display: block; font-family: var(--serif); font-size: clamp(17px, 4.6vw, 22px); font-weight: 400; color: var(--ink); }
-.masthead__title { margin: -2px 0 0; font-family: var(--serif); font-weight: 700; text-transform: uppercase;
-  font-size: clamp(54px, 17vw, 104px); line-height: 0.92; letter-spacing: -0.01em; color: var(--ink); }
-.masthead__sub { margin: 12px 0 0; font-family: var(--body); font-style: italic; font-size: 14px; color: var(--muted); }
+.masthead { text-align: center; padding: 20px 20px 10px; }
+.masthead__over { display: block; font-family: var(--display); font-optical-sizing: auto; font-weight: 400;
+  font-size: clamp(18px, 4.8vw, 24px); color: var(--ink); letter-spacing: 0.01em; }
+.masthead__title { margin: -4px 0 0; font-family: var(--display); font-optical-sizing: auto; font-weight: 600;
+  font-variation-settings: 'SOFT' 0, 'WONK' 1; text-transform: uppercase;
+  font-size: clamp(58px, 18vw, 112px); line-height: 0.9; letter-spacing: -0.012em; color: var(--ink); }
 
 .lib__loading { text-align: center; color: var(--muted); padding: 90px 0; font-style: italic; font-family: var(--body); }
 
 /* ---- shelves ---- */
-.shelves { padding: 16px 0 0; }
-.shelf { margin-top: 26px; }
-.shelf__head { display: flex; align-items: center; justify-content: space-between; padding: 0 22px 6px; }
-.shelf__label { margin: 0; font-family: var(--sans); font-weight: 700; font-size: clamp(19px, 5vw, 24px); letter-spacing: -0.01em; color: var(--ink); }
-.shelf__meta { display: flex; align-items: center; gap: 12px; }
-.shelf__count { font-size: 14px; color: var(--muted); }
-.shelf__nav { display: inline-flex; gap: 2px; }
-.shelf__nav button { width: 30px; height: 30px; border: none; background: transparent; color: var(--muted);
-  font-size: 22px; line-height: 1; cursor: pointer; border-radius: 50%; transition: color .2s, background .2s; }
-.shelf__nav button:hover { color: var(--ink); background: rgba(0,0,0,0.05); }
+.shelves { padding: 18px 0 0; }
+.shelf { margin-top: 30px; opacity: 0; transform: translateY(10px); }
+.shelf--in { animation: secIn .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--si) * 90ms); }
+@keyframes secIn { to { opacity: 1; transform: translateY(0); } }
+
+.shelf__head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 22px 4px; }
+.shelf__label { margin: 0; font-family: var(--sans); font-weight: 700; font-size: clamp(19px, 5vw, 23px);
+  letter-spacing: -0.015em; color: var(--ink); }
+.shelf__meta { display: flex; align-items: center; gap: 10px; }
+.shelf__count { font-size: 13.5px; color: var(--muted); letter-spacing: 0.01em; }
+.shelf__nav { display: inline-flex; gap: 1px; }
+.shelf__nav button { width: 28px; height: 28px; border: none; background: transparent; color: var(--muted);
+  font-size: 20px; line-height: 1; cursor: pointer; border-radius: 50%; transition: color .25s, background .25s; }
+.shelf__nav button:hover { color: var(--ink); background: rgba(0,0,0,0.045); }
+.shelf__nav button:active { transform: scale(0.92); }
 
 .shelf__stage { position: relative; }
 .shelf__row {
   display: flex; align-items: flex-end; gap: 5px;
-  padding: 16px 22px 22px; overflow-x: auto; scroll-snap-type: x proximity;
+  padding: 18px 22px 14px; overflow-x: auto; scroll-snap-type: x proximity;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .shelf__row::-webkit-scrollbar { display: none; }
-.shelf__pad { flex: 0 0 16px; }
-.shelf__empty { padding: 28px 22px 34px; color: var(--muted); font-style: italic; font-family: var(--body); font-size: 14px; }
+.shelf__pad { flex: 0 0 17px; }
 
 /* covers (face-out) */
-.book { flex: 0 0 auto; border: 0; padding: 0; background: none; cursor: pointer; scroll-snap-align: center;
-  opacity: 0; transform: translateY(14px); }
-.book--in { animation: bookIn .55s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--i) * 55ms); }
-@keyframes bookIn { to { opacity: 1; transform: translateY(0); } }
-.book:active { transform: translateY(1px) scale(0.99); }
+.book { position: relative; flex: 0 0 auto; width: 118px; height: 177px; border: 0; padding: 0; background: none;
+  cursor: pointer; scroll-snap-align: center; transform: translateZ(0); }
+.book__sug { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--tint); box-shadow: 0 0 0 2px rgba(255,255,255,0.55), 0 1px 2px rgba(0,0,0,0.25); opacity: 0.92; }
 
-.cover { display: block; width: 118px; height: 178px; object-fit: cover; border-radius: 2px 3px 3px 2px;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 10px 18px -10px rgba(0,0,0,0.5), inset 0 0 0 0.5px rgba(0,0,0,0.12);
-  transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s; }
-.book:hover .cover { transform: translateY(-8px); box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 22px 30px -14px rgba(0,0,0,0.55); }
+.cover { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px 3.5px 3.5px 2px;
+  box-shadow: 0 0.5px 1px rgba(0,0,0,0.18), 0 8px 16px -10px rgba(0,0,0,0.45), inset 0 0 0 0.5px rgba(0,0,0,0.1);
+  transition: transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s; }
+@media (hover: hover) {
+  .book:hover .cover { transform: translateY(-4px); box-shadow: 0 0.5px 1px rgba(0,0,0,0.18), 0 16px 24px -14px rgba(0,0,0,0.5); }
+}
+.book:active .cover { transform: translateY(-1px) scale(0.985); }
 
-.cover--proc { display: flex; flex-direction: column; justify-content: space-between; padding: 13px 12px;
-  background: var(--pc-bg); color: var(--pc-fg); }
-.cover-proc__mark { width: 22px; height: 6px; border-radius: 1px; background: var(--pc-mark); }
-.cover-proc__title { font-family: var(--sans); font-weight: 700; font-size: 14px; line-height: 1.08; letter-spacing: -0.01em;
+.cover--proc { container-type: inline-size; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 11% 10%; background: var(--pc-bg); color: var(--pc-fg); }
+.cover-proc__mark { width: 20cqw; height: 4.5cqw; border-radius: 1px; background: var(--pc-mark); }
+.cover-proc__title { font-family: var(--sans); font-weight: 700; font-size: 12cqw; line-height: 1.06; letter-spacing: -0.01em;
   display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-.cover-proc__author { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
+.cover-proc__author { font-size: 4.6cqw; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82; }
 
-/* acrylic rail */
-.rail { position: absolute; left: 16px; right: 16px; bottom: 8px; height: 50px; border-radius: 9px; z-index: 2; pointer-events: none;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 30%, transparent), color-mix(in srgb, var(--tint) 48%, transparent));
-  -webkit-backdrop-filter: blur(7px) saturate(1.2); backdrop-filter: blur(7px) saturate(1.2);
+/* ---- acrylic rail — taller, realistic frost, subtle shadow, tiny screws ---- */
+.rail {
+  position: absolute; left: 14px; right: 14px; bottom: 4px; height: 60px; border-radius: 11px; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, transparent), color-mix(in srgb, var(--tint) 30%, transparent));
+  -webkit-backdrop-filter: blur(9px) saturate(1.25) brightness(1.02);
+  backdrop-filter: blur(9px) saturate(1.25) brightness(1.02);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.7) inset,
-    0 -1px 0 color-mix(in srgb, var(--tint) 60%, transparent) inset,
-    0 16px 22px -12px color-mix(in srgb, var(--tint) 70%, transparent),
-    0 2px 6px rgba(0,0,0,0.10);
-  border: 1px solid rgba(255,255,255,0.35); }
-.rail__gloss { position: absolute; inset: 1px 1px auto 1px; height: 42%; border-radius: 8px 8px 14px 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0) 100%); }
-.rail__screw { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; transform: translateY(-50%);
-  background: radial-gradient(40% 40% at 38% 32%, #fdfdfd, #c8c8c8 55%, #8c8c8c 100%);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.18); }
-.rail__screw::after { content: ""; position: absolute; inset: 0; margin: auto; width: 7px; height: 1.4px; background: rgba(0,0,0,0.4); border-radius: 1px; transform: rotate(-30deg); }
-.rail__screw--l { left: 9px; } .rail__screw--r { right: 9px; }
+    inset 0 0.5px 0 rgba(255,255,255,0.85),
+    inset 0 -0.5px 0 color-mix(in srgb, var(--tint) 45%, transparent),
+    inset 0 0 0 0.5px rgba(255,255,255,0.18),
+    0 8px 16px -12px color-mix(in srgb, var(--tint) 60%, rgba(0,0,0,0.4));
+}
+.rail__gloss { position: absolute; inset: 1px 1px auto 1px; height: 46%; border-radius: 10px 10px 16px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0)); }
+.rail__screw { position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-50%);
+  background: radial-gradient(50% 50% at 42% 34%, #ffffff 0%, #e9eaec 28%, #c2c4c9 62%, #9a9ca2 100%);
+  box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.9), inset 0 -0.5px 0.5px rgba(0,0,0,0.28), 0 0.5px 1px rgba(0,0,0,0.18); }
+.rail__screw--l { left: 11px; } .rail__screw--r { right: 11px; }
 
 /* ================================================================== *
  * Reader                                                              *
  * ================================================================== */
 .reader { position: fixed; inset: 0; z-index: 50; }
-.reader__backdrop { position: absolute; inset: 0; background: rgba(20,18,16,0.4); opacity: 0; transition: opacity .4s;
-  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.reader__backdrop { position: absolute; inset: 0; background: rgba(22,22,24,0.32); opacity: 0; transition: opacity .42s;
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .reader__backdrop.is-open { opacity: 1; }
-.reader__sheet { position: absolute; left: 50%; bottom: 0; width: min(100%, 560px); height: 100%;
-  transform: translate(-50%, 100%); transition: transform .42s cubic-bezier(.16,1,.3,1);
-  background: var(--card); display: flex; flex-direction: column; box-shadow: 0 -10px 50px rgba(0,0,0,0.3);
-  font-family: var(--body); }
-.reader__sheet.is-open { transform: translate(-50%, 0); }
 
-.reader__bar { display: flex; align-items: center; justify-content: space-between;
-  padding: max(env(safe-area-inset-top), 14px) 16px 10px; }
-.reader__icon { width: 40px; height: 40px; border: none; background: rgba(0,0,0,0.04); border-radius: 50%; cursor: pointer;
-  font-size: 18px; color: var(--ink); line-height: 1; transition: background .2s; }
-.reader__icon:hover { background: rgba(0,0,0,0.09); }
-.reader__crumb { font-family: var(--sans); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.ghost { position: fixed; z-index: 60; transform-origin: top left; pointer-events: none;
+  border-radius: 2px 3.5px 3.5px 2px; overflow: hidden; box-shadow: 0 18px 40px -18px rgba(0,0,0,0.5); }
+.ghost .cover { border-radius: 2px 3.5px 3.5px 2px; }
+
+.reader__sheet { position: absolute; left: 50%; top: 0; width: min(100%, 540px); height: 100%; transform: translateX(-50%);
+  background: var(--card); display: flex; flex-direction: column; box-shadow: 0 0 60px rgba(0,0,0,0.18);
+  font-family: var(--body); opacity: 0; transition: opacity .4s ease; }
+.reader__sheet.is-open { opacity: 1; }
+
+.reader__bar { display: flex; align-items: center; justify-content: space-between; padding: max(env(safe-area-inset-top), 16px) 16px 8px; }
+.reader__icon { width: 38px; height: 38px; border: none; background: rgba(0,0,0,0.045); border-radius: 50%; cursor: pointer;
+  font-size: 17px; color: var(--ink); line-height: 1; transition: background .2s, transform .2s; }
+.reader__icon:hover { background: rgba(0,0,0,0.09); } .reader__icon:active { transform: scale(0.92); }
+.reader__crumb { font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
 
 .reader__pager { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .reader__pager::-webkit-scrollbar { display: none; }
-.rpage { flex: 0 0 100%; scroll-snap-align: start; overflow-y: auto; padding: 8px 30px 28px; }
+.rpage { flex: 0 0 100%; scroll-snap-align: start; overflow-y: auto; padding: 6px 30px 26px; }
 
 /* cover page */
 .rpage--cover { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.hero { margin-bottom: 26px; }
-.hero__cover { width: auto; max-width: 64%; height: auto; max-height: 46vh; aspect-ratio: auto;
-  border-radius: 3px; box-shadow: 0 2px 0 rgba(0,0,0,0.1), 0 30px 50px -20px rgba(0,0,0,0.55); }
-.hero .cover--proc { width: 200px; height: 300px; }
-.hero__title { margin: 0; font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 6.6vw, 36px); line-height: 1.06; }
-.hero__author { margin: 8px 0 0; font-family: var(--sans); font-size: 15px; color: var(--muted); }
-.chip { margin-top: 18px; display: inline-block; font-family: var(--sans); font-size: 11px; letter-spacing: 0.14em;
+.hero { width: min(58%, 226px); aspect-ratio: 2 / 3; border-radius: 3px; overflow: hidden;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.12), 0 34px 54px -26px rgba(0,0,0,0.5); }
+.hero .cover { border-radius: 3px; }
+.hero__meta { margin-top: 28px; opacity: 0; transform: translateY(8px); transition: opacity .5s .15s, transform .5s .15s; }
+.hero__meta.is-open { opacity: 1; transform: none; }
+.hero__title { margin: 0; font-family: var(--display); font-optical-sizing: auto; font-weight: 600; font-variation-settings: 'SOFT' 0, 'WONK' 1;
+  font-size: clamp(27px, 6.8vw, 37px); line-height: 1.05; }
+.hero__author { margin: 9px 0 0; font-family: var(--sans); font-size: 15px; color: var(--muted); }
+.chip { margin-top: 18px; display: inline-block; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 7px 14px; border-radius: 999px; }
-.chip--lu { background: rgba(46,125,91,0.14); color: #2E7D5B; }
-.chip--sug { background: rgba(62,146,214,0.16); color: #2D77B6; }
-.hero__more { margin-top: 26px; border: none; background: none; cursor: pointer; font-family: var(--sans);
-  font-size: 14px; color: var(--ink); opacity: 0.65; transition: opacity .2s; }
+.chip--lu { background: rgba(46,125,91,0.13); color: #2C7355; }
+.chip--sug { background: rgba(62,143,214,0.15); color: #2C77B6; }
+.hero__more { margin-top: 28px; border: none; background: none; cursor: pointer; font-family: var(--sans);
+  font-size: 14px; color: var(--ink); opacity: 0.6; transition: opacity .2s; }
 .hero__more:hover { opacity: 1; }
 
 /* content page */
-.rpage--content { padding-top: 18px; }
-.content { max-width: 460px; margin: 0 auto; }
-.kicker { display: block; font-family: var(--sans); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
-.note { margin: 0; font-family: var(--body); font-size: clamp(17px, 2.4vw, 20px); line-height: 1.62; color: var(--ink); }
-.note__drop { float: left; font-family: var(--serif); font-weight: 600; font-size: 3.1em; line-height: 0.72; padding: 4px 12px 0 0; }
+.rpage--content { padding-top: 22px; }
+.content { max-width: 460px; margin: 0 auto; opacity: 0; transform: translateY(10px); transition: opacity .5s .1s, transform .5s .1s; }
+.content.is-open { opacity: 1; transform: none; }
+.kicker { display: block; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+.note { margin: 0; font-family: var(--body); font-size: clamp(17px, 2.4vw, 20px); line-height: 1.64; color: var(--ink); }
+.note__drop { float: left; font-family: var(--display); font-weight: 600; font-size: 3em; line-height: 0.74; padding: 4px 12px 0 0; color: var(--ink); }
 .sign { margin-top: 22px; font-family: var(--sans); font-size: 12px; color: var(--muted); }
 .facts { margin: 30px 0 0; border-top: 1px solid var(--line); }
-.facts > div { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
-.facts dt { font-family: var(--sans); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-.facts dd { margin: 0; font-family: var(--serif); font-size: 16px; text-align: right; }
+.facts > div { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.facts dt { font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); align-self: center; }
+.facts dd { margin: 0; font-family: var(--display); font-optical-sizing: auto; font-size: 16px; text-align: right; }
 
-.reader__dots { display: flex; justify-content: center; gap: 9px; padding: 12px 0 max(env(safe-area-inset-bottom), 18px); }
-.reader__dots button { width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
-  background: rgba(0,0,0,0.18); transition: all .3s; }
-.reader__dots button.is-on { background: var(--ink); width: 22px; border-radius: 5px; }
+.reader__dots { display: flex; justify-content: center; gap: 9px; padding: 12px 0 max(env(safe-area-inset-bottom), 18px);
+  opacity: 0; transition: opacity .4s .3s; }
+.reader__dots.is-open { opacity: 1; }
+.reader__dots button { width: 7px; height: 7px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+  background: rgba(0,0,0,0.16); transition: all .3s; }
+.reader__dots button.is-on { background: var(--ink); width: 20px; border-radius: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .book { opacity: 1; transform: none; }
-  .book--in { animation: none; }
-  .cover, .reader__sheet, .reader__backdrop { transition: none; }
+  .shelf, .hero__meta, .content { opacity: 1; transform: none; animation: none; }
+  .cover, .reader__sheet, .reader__backdrop, .ghost { transition: none; }
 }
 `;
