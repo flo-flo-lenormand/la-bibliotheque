@@ -12,6 +12,23 @@ function hash(s: string) {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
 }
+function mulberry32(a: number) {
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Real shelves hold books of different sizes — derive a stable height/width
+// per book from its metadata so every spine differs but never reflows.
+function sizeFor(b: Book): { w: number; h: number } {
+  const r = mulberry32(hash(`${b.id}:${b.title}:${b.author}`));
+  const pages = b.page_count ?? 280;
+  const h = Math.round(154 + r() * 52 + Math.min(28, (pages - 200) * 0.03)); // ~154–214
+  const aspect = 0.60 + r() * 0.13;                                          // 0.60–0.73
+  return { w: Math.round(h * aspect), h };
+}
 
 // Curated, deliberately-distinct acrylic tints — assigned by shelf order so
 // neighbouring shelves never clash (amber, blue, green, terracotta, violet, teal).
@@ -60,50 +77,39 @@ type Origin = { book: Book; rect: DOMRect | null };
 function Shelf({ label, books, tint, mounted, sIdx, onOpen }: {
   label: string; books: Book[]; tint: string; mounted: boolean; sIdx: number; onOpen: (o: Origin) => void;
 }) {
-  const rowRef = useRef<HTMLDivElement | null>(null);
-  const nudge = (dir: number) => {
-    const el = rowRef.current;
-    if (el) el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 300), behavior: "smooth" });
-  };
   return (
     <section className={`shelf ${mounted ? "shelf--in" : ""}`} style={{ "--si": sIdx } as Vars}>
-      <header className="shelf__head">
-        <h2 className="shelf__label">{label}</h2>
-        <div className="shelf__meta">
-          <span className="shelf__count">{books.length} {books.length > 1 ? "livres" : "livre"}</span>
-          <span className="shelf__nav">
-            <button onClick={() => nudge(-1)} aria-label="Précédent">‹</button>
-            <button onClick={() => nudge(1)} aria-label="Suivant">›</button>
-          </span>
-        </div>
-      </header>
-
       <div className="shelf__stage" style={{ "--tint": tint } as Vars}>
-        <div className="shelf__row" ref={rowRef}>
-          {books.map((b) => (
-            <button
-              key={b.id}
-              className="book"
-              onClick={(e) => {
-                haptic();
-                const cover = e.currentTarget.querySelector(".cover");
-                onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
-              }}
-              aria-label={`${b.title} — ${b.author}`}
-            >
-              <span className="book__plate"><Cover book={b} /></span>
-              {b.status === "suggéré" && <span className="book__sug" title="Suggéré par l'intelligence" />}
-            </button>
-          ))}
+        <div className="shelf__row">
+          {books.map((b) => {
+            const s = sizeFor(b);
+            return (
+              <button
+                key={b.id}
+                className="book"
+                style={{ "--w": `${s.w}px`, "--h": `${s.h}px` } as Vars}
+                onClick={(e) => {
+                  haptic();
+                  const cover = e.currentTarget.querySelector(".cover");
+                  onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
+                }}
+                aria-label={`${b.title} — ${b.author}`}
+              >
+                <span className="book__plate"><Cover book={b} /></span>
+                {b.status === "suggéré" && <span className="book__sug" title="Suggéré par l'intelligence" />}
+              </button>
+            );
+          })}
           <span className="shelf__pad" aria-hidden />
         </div>
+        <span className="rail__glass" aria-hidden />
         <div className="rail" aria-hidden>
+          <span className="rail__frame" />
           <span className="rail__gloss" />
-          <span className="rail__screw rail__screw--tl" />
-          <span className="rail__screw rail__screw--bl" />
-          <span className="rail__screw rail__screw--tr" />
-          <span className="rail__screw rail__screw--br" />
+          <span className="rail__screw rail__screw--l" />
+          <span className="rail__screw rail__screw--r" />
         </div>
+        <span className="dymo"><span className="dymo__txt">{label}</span></span>
       </div>
     </section>
   );
@@ -282,13 +288,17 @@ const CSS = String.raw`
 
 .lib *, .reader * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .lib {
-  --bg: #ECECEC; --card: #F5F5F4; --ink: #1A1A1D; --muted: #98989E; --line: rgba(0,0,0,0.10);
+  --bg: #F3F2EF; --card: #FAF9F6; --ink: #1A1A1D; --muted: #9a978f; --line: rgba(0,0,0,0.10);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, Arial, sans-serif;
   --display: 'Fraunces', Georgia, serif;
   --body: 'Newsreader', Georgia, serif;
-  min-height: 100vh; background: var(--bg); color: var(--ink);
+  position: relative; min-height: 100vh; background: var(--bg); color: var(--ink);
   font-family: var(--sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
+.lib::before {  /* faint plaster wall texture */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.lib__main { position: relative; z-index: 1; }
 .lib__main { max-width: 760px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 30px) 0 calc(env(safe-area-inset-bottom) + 56px); }
 
@@ -307,30 +317,28 @@ const CSS = String.raw`
 .shelf--in { animation: secIn .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--si) * 90ms); }
 @keyframes secIn { to { opacity: 1; transform: translateY(0); } }
 
-.shelf__head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 22px 4px; }
-.shelf__label { margin: 0; font-family: var(--sans); font-weight: 700; font-size: clamp(19px, 5vw, 23px);
-  letter-spacing: -0.015em; color: var(--ink); }
-.shelf__meta { display: flex; align-items: center; gap: 10px; }
-.shelf__count { font-size: 13.5px; color: var(--muted); letter-spacing: 0.01em; }
-.shelf__nav { display: inline-flex; gap: 1px; }
-.shelf__nav button { width: 28px; height: 28px; border: none; background: transparent; color: var(--muted);
-  font-size: 20px; line-height: 1; cursor: pointer; border-radius: 50%; transition: color .25s, background .25s; }
-.shelf__nav button:hover { color: var(--ink); background: rgba(0,0,0,0.045); }
-.shelf__nav button:active { transform: scale(0.92); }
+/* DYMO embossed label — black plastic tape, raised off-white letters, stuck on the shelf */
+.dymo { position: absolute; left: 20px; bottom: 13px; z-index: 6; pointer-events: none;
+  padding: 3px 7px 3.5px; border-radius: 3px; transform: rotate(-0.6deg);
+  background: linear-gradient(180deg, #2b2b2d 0%, #161617 48%, #0c0c0d 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0.5px 0 rgba(255,255,255,0.10) inset, 0 -1px 1px rgba(0,0,0,0.6) inset; }
+.dymo::before { content: ""; position: absolute; inset: 0; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14), transparent 38%); }
+.dymo__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: 8px; line-height: 1;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #e6e4df; padding-right: 0.2em;
+  text-shadow: 0 0.5px 0 rgba(255,255,255,0.45), 0 -0.5px 0.5px rgba(0,0,0,0.85), 0 1px 1px rgba(0,0,0,0.6); }
 
-.shelf__stage { position: relative; }
+.shelf__stage { position: relative; padding-top: 4px; }
 .shelf__row {
-  display: flex; align-items: flex-end; gap: 5px;
-  padding: 20px 22px 12px; overflow-x: auto; scroll-snap-type: x proximity;
+  display: flex; align-items: flex-end; gap: 7px;
+  padding: 22px 22px 10px; overflow-x: auto; scroll-snap-type: x proximity;
   scrollbar-width: none; -ms-overflow-style: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
 }
 .shelf__row::-webkit-scrollbar { display: none; }
 .shelf__pad { flex: 0 0 16px; }
 
 /* covers (face-out) */
-.book { position: relative; flex: 0 0 auto; width: 124px; height: 186px; border: 0; padding: 0; background: none;
+.book { position: relative; flex: 0 0 auto; width: var(--w); height: var(--h); border: 0; padding: 0; background: none;
   cursor: pointer; scroll-snap-align: center; }
 .book__plate { display: block; width: 100%; height: 100%; border-radius: 2px 4px 4px 2px; overflow: hidden;
   background: #e7e6e3; /* placeholder until the cover fades in */
@@ -357,41 +365,39 @@ const CSS = String.raw`
   display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .cover-proc__author { font-size: 4.6cqw; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82; }
 
-/* ---- acrylic rail — realistic frost, bevel, refraction, subtle shadow, iPhone screws ---- */
-.rail {
-  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 54px; border-radius: 12px; z-index: 3; pointer-events: none;
-  overflow: hidden;                                  /* clip bevel/gloss/edge to the rounded corners */
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 24%, transparent), color-mix(in srgb, var(--tint) 46%, transparent));
-  -webkit-backdrop-filter: blur(16px) saturate(1.7) brightness(1.06);
-  backdrop-filter: blur(16px) saturate(1.7) brightness(1.06);
-  box-shadow:
-    inset 0 1px 0 rgba(205,242,255,0.98),             /* cool top edge — blue side of the prism */
-    inset 0 2.5px 0 -1px rgba(255,202,144,0.65),      /* warm line beneath — chromatic dispersion */
-    inset 0 -1.5px 1px -0.5px color-mix(in srgb, var(--tint) 60%, rgba(0,0,0,0.3)), /* bottom edge */
-    inset 0 0 0 0.5px rgba(255,255,255,0.26),
-    0 6px 16px -10px rgba(0,0,0,0.22);                /* whisper drop shadow */
+/* ---- acrylic shelf — transparent coloured plexiglass, edge-lit & glossy ---- */
+/* The tinted body: a semi-transparent colour that MULTIPLIES the covers + wall
+   behind it (real coloured acrylic) while staying perfectly sharp. Kept as its
+   own layer with no stacking context so the blend reaches the covers. */
+.rail__glass {
+  position: absolute; left: 12px; right: 12px; bottom: 0; height: 66px; border-radius: 3px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--tint) 74%, transparent) 0%,
+    color-mix(in srgb, var(--tint) 88%, transparent) 100%);
+  mix-blend-mode: multiply;
 }
-.rail::before {  /* refraction: soft shadow where the covers enter the acrylic */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; z-index: 1;
-  background: linear-gradient(180deg, rgba(0,0,0,0.10), transparent); }
-.rail::after {   /* liquid-glass caustics drifting slowly across the surface */
-  content: ""; position: absolute; inset: -30% -40%; z-index: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.62;
-  background:
-    radial-gradient(36% 130% at 26% 50%, rgba(255,255,255,0.7), transparent 60%),
-    radial-gradient(30% 130% at 70% 50%, rgba(255,250,235,0.55), transparent 56%);
-  animation: railCaustic 11s ease-in-out infinite alternate; will-change: transform; }
-@keyframes railCaustic { from { transform: translate3d(-5%,0,0); } to { transform: translate3d(5%,0,0); } }
-.rail__gloss { position: absolute; inset: 0 0 auto 0; height: 44%; z-index: 1;
-  background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.06) 72%, transparent); }
-.rail__gloss::after {  /* crisp diagonal specular streak — reads as glass shine */
-  content: ""; position: absolute; top: -10%; bottom: -120%; left: 10%; width: 18%;
-  background: linear-gradient(106deg, transparent, rgba(255,255,255,0.7), transparent);
-  transform: skewX(-20deg); filter: blur(1px); }
-.rail__screw { position: absolute; z-index: 2; width: 2.5px; height: 2.5px; border-radius: 50%;
-  background: #16181b;
-  box-shadow: inset 0 0.3px 0.3px rgba(255,255,255,0.4), 0 0.3px 0.6px rgba(0,0,0,0.4); }
-.rail__screw--tl { left: 7px; top: 6px; } .rail__screw--bl { left: 7px; bottom: 6px; }
-.rail__screw--tr { right: 7px; top: 6px; } .rail__screw--br { right: 7px; bottom: 6px; }
+/* Lit cut edges, material thickness, gloss & hardware — drawn on top (normal blend). */
+.rail {
+  position: absolute; left: 12px; right: 12px; bottom: 0; height: 66px; border-radius: 3px; z-index: 3; pointer-events: none;
+  box-shadow: 0 9px 11px -6px rgba(45,33,20,0.18), 0 2px 4px -2px rgba(45,33,20,0.14); /* soft cast shadow on the wall */
+}
+.rail__frame { position: absolute; inset: 0; border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tint) 78%, #fff),         /* saturated edge-lit rim */
+    inset 0 1.5px 0 rgba(255,255,255,0.92),                            /* bright top cut edge */
+    inset 2px 0 4px -2px rgba(255,255,255,0.55),                       /* left edge sheen (thickness) */
+    inset -2px 0 4px -2px rgba(255,255,255,0.55),                      /* right edge sheen */
+    inset 0 -3px 4px -2px color-mix(in srgb, var(--tint) 65%, #000);   /* shaded inner bottom */
+}
+.rail__gloss { position: absolute; left: 0; right: 0; top: 0; height: 54%; border-radius: 3px 3px 0 0; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 100%); mix-blend-mode: screen; }
+.rail__gloss::after { content: ""; position: absolute; top: -30%; bottom: -200%; left: 13%; width: 13%;
+  background: linear-gradient(104deg, transparent, rgba(255,255,255,0.5), transparent); transform: skewX(-20deg); }
+/* stainless standoff screws at the ends */
+.rail__screw { position: absolute; z-index: 4; top: 50%; width: 6px; height: 6px; border-radius: 50%; transform: translateY(-50%);
+  background: radial-gradient(50% 50% at 38% 32%, #ffffff 0%, #e3e5e9 34%, #b4b7be 66%, #888c93 100%);
+  box-shadow: 0 0.5px 1.5px rgba(0,0,0,0.4), inset 0 0.5px 0.5px rgba(255,255,255,0.95), inset 0 -0.5px 0.5px rgba(0,0,0,0.3); }
+.rail__screw--l { left: 10px; } .rail__screw--r { right: 10px; }
 
 /* ================================================================== *
  * Reader                                                              *
@@ -458,6 +464,5 @@ const CSS = String.raw`
 @media (prefers-reduced-motion: reduce) {
   .shelf, .hero__meta, .content, .cover { opacity: 1; transform: none; animation: none; }
   .cover, .book__plate, .reader__sheet, .reader__backdrop, .ghost { transition: none; }
-  .rail::after { animation: none; }
 }
 `;
