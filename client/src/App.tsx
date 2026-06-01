@@ -8,11 +8,11 @@ import { ROOM_BG } from "./roombg";
 type Book = ApiResponse<typeof api, "list_books">["books"][number];
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
-/* The empty-library photo, measured: shelf-board tops (where a book's bottom
-   rests) and the board above (the book's height ceiling), as % of the image. */
-const BOARDS = [21.0, 30.7, 40.5, 50.2, 60.0, 70.1, 81.6];
-const CEILS = [12.0, 21.0, 30.7, 40.5, 50.2, 60.0, 70.1];
-const CAVITY_LEFT = 25;   // % from left where books begin
+/* The empty-library photo, measured: the lit ledge of each shelf (where a
+   book's bottom rests) and the ledge above it, as % of the image height. */
+const BOARDS = [21.0, 30.5, 40.0, 50.0, 59.8, 69.8, 81.3];
+const CEILS = [11.5, 21.0, 30.5, 40.0, 50.0, 59.8, 69.8];
+const CAVITY_LEFT = 24;   // % from left where books begin
 const CAVITY_RIGHT = 14;  // % inset from right
 
 function hash(s: string) {
@@ -70,20 +70,21 @@ function Cover({ book }: { book: Book }) {
 
 type Origin = { book: Book; rect: DOMRect | null };
 
-/* A shelf: books standing on one board of the photo, with a DYMO tag. */
-function RoomShelf({ books, label, board, ceil, mounted, sIdx, onOpen }: {
-  books: Book[]; label: string; board: number; ceil: number; mounted: boolean; sIdx: number; onOpen: (o: Origin) => void;
+/* A shelf: books standing on one ledge of the photo (zero-height row pinned to
+   the ledge line; books align-end so their bottoms rest exactly on it). */
+function RoomShelf({ books, board, ceil, mounted, sIdx, onOpen }: {
+  books: Book[]; board: number; ceil: number; mounted: boolean; sIdx: number; onOpen: (o: Origin) => void;
 }) {
+  const gap = board - ceil;
   return (
-    <div className="shelf-row" style={{ bottom: `${100 - board}%`, height: `${board - ceil}%`, "--si": sIdx } as Vars}>
-      <span className="shelf-tag"><span className="shelf-tag__txt">{label}</span></span>
+    <div className="shelf-row" style={{ top: `${board}%`, "--si": sIdx } as Vars}>
       {books.map((b) => {
         const s = shapeFor(b);
         return (
           <button
             key={b.id}
             className={`rbook ${mounted ? "rbook--in" : ""}`}
-            style={{ "--ar": s.ar, "--fill": s.fill, "--lean": `${s.lean}deg` } as Vars}
+            style={{ "--ar": s.ar, "--bh": (gap * s.fill).toFixed(2), "--lean": `${s.lean}deg` } as Vars}
             onClick={(e) => {
               haptic();
               const cover = e.currentTarget.querySelector(".cover");
@@ -242,7 +243,7 @@ export function App() {
       <div className="room" style={{ "--room": `url("${ROOM_BG}")` } as Vars}>
         <div className="room__img" />
         {isPending ? null : shelves.map((s, i) => (
-          <RoomShelf key={s.name} label={s.name} books={s.list} board={BOARDS[i] ?? 81.6} ceil={CEILS[i] ?? 70.1}
+          <RoomShelf key={s.name} books={s.list} board={BOARDS[i] ?? 81.3} ceil={CEILS[i] ?? 69.8}
             mounted={mounted} sIdx={i} onOpen={setOrigin} />
         ))}
       </div>
@@ -271,11 +272,12 @@ const CSS = String.raw`
 .room { position: relative; height: 100svh; aspect-ratio: 759 / 1640; overflow: hidden; }
 .room__img { position: absolute; inset: 0; background: var(--room) center/cover no-repeat; }
 
-/* one shelf = a board line; books sit on its bottom edge, left → right */
-.shelf-row { position: absolute; left: ${CAVITY_LEFT}%; right: ${CAVITY_RIGHT}%;
+/* one shelf = a zero-height line pinned at the ledge; books align-end so their
+   bottoms rest exactly on the ledge and grow upward. Height in svh ≈ %of room. */
+.shelf-row { position: absolute; left: ${CAVITY_LEFT}%; right: ${CAVITY_RIGHT}%; height: 0;
   display: flex; align-items: flex-end; gap: 2.4%; }
 
-.rbook { position: relative; flex: 0 0 auto; height: calc(var(--fill) * 100%); aspect-ratio: var(--ar);
+.rbook { position: relative; flex: 0 0 auto; height: calc(var(--bh) * 1svh); aspect-ratio: var(--ar);
   border: 0; padding: 0; background: none; cursor: pointer; transform-origin: 50% 100%;
   transform: rotate(var(--lean)); }
 .rbook--in { animation: rbookIn .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--si) * 80ms); }
@@ -305,12 +307,6 @@ const CSS = String.raw`
 .cover-proc__title { font-family: var(--sans); font-weight: 700; font-size: 12cqw; line-height: 1.06; letter-spacing: -0.01em;
   display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .cover-proc__author { font-size: 4.6cqw; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82; }
-
-/* DYMO-ish white tag sitting on the shelf board, before the books */
-.shelf-tag { align-self: flex-end; flex: 0 0 auto; margin-bottom: 1.5%; padding: 2px 5px; border-radius: 1.5px;
-  background: #f6f4ef; box-shadow: 0 0.5px 0.5px rgba(0,0,0,0.06); }
-.shelf-tag__txt { display: block; font-family: var(--sans); font-weight: 800; font-size: clamp(5px, 1.3vw, 7px);
-  letter-spacing: 0.16em; text-transform: uppercase; color: #1b1b1d; }
 
 /* ================================================================== *
  * Reader                                                              *
