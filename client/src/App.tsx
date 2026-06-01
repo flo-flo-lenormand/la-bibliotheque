@@ -76,28 +76,36 @@ function RoomShelf({ books, board, ceil, mounted, sIdx, onOpen }: {
   books: Book[]; board: number; ceil: number; mounted: boolean; sIdx: number; onOpen: (o: Origin) => void;
 }) {
   const gap = board - ceil;
+  const lipTop = (board - 0.4).toFixed(2);
+  const lipBot = (100 - (board + 2.8)).toFixed(2);
   return (
-    <div className="shelf-row" style={{ top: `${board}%`, "--si": sIdx } as Vars}>
-      {books.map((b) => {
-        const s = shapeFor(b);
-        return (
-          <button
-            key={b.id}
-            className={`rbook ${mounted ? "rbook--in" : ""}`}
-            style={{ "--ar": s.ar, "--bh": (gap * s.fill).toFixed(2), "--lean": `${s.lean}deg` } as Vars}
-            onClick={(e) => {
-              haptic();
-              const cover = e.currentTarget.querySelector(".cover");
-              onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
-            }}
-            aria-label={`${b.title} — ${b.author}`}
-          >
-            <Cover book={b} />
-            {b.status === "suggéré" && <span className="rbook__dot" aria-hidden />}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div className="shelf-row" style={{ top: `${board}%`, "--si": sIdx } as Vars}>
+        {books.map((b) => {
+          const s = shapeFor(b);
+          return (
+            <button
+              key={b.id}
+              className={`rbook ${mounted ? "rbook--in" : ""}`}
+              style={{ "--ar": s.ar, "--bh": (gap * s.fill).toFixed(2), "--lean": `${s.lean}deg` } as Vars}
+              onClick={(e) => {
+                haptic();
+                const cover = e.currentTarget.querySelector(".cover");
+                onOpen({ book: b, rect: cover ? cover.getBoundingClientRect() : null });
+              }}
+              aria-label={`${b.title} — ${b.author}`}
+            >
+              <Cover book={b} />
+              {b.status === "suggéré" && <span className="rbook__dot" aria-hidden />}
+            </button>
+          );
+        })}
+      </div>
+      {/* the real shelf-edge from the photo, laid OVER the books so the
+          perspective lip occludes their base (books extend slightly below). */}
+      <div className="shelf-lip" aria-hidden
+        style={{ clipPath: `inset(${lipTop}% 0 ${lipBot}% 0)`, WebkitClipPath: `inset(${lipTop}% 0 ${lipBot}% 0)` } as CSSProperties} />
+    </>
   );
 }
 
@@ -278,8 +286,12 @@ const CSS = String.raw`
   display: flex; align-items: flex-end; gap: 2.4%; }
 
 .rbook { position: relative; flex: 0 0 auto; height: calc(var(--bh) * 1svh); aspect-ratio: var(--ar);
+  margin-bottom: -2.4svh;   /* dip below the ledge so the photo lip can cover the base */
   border: 0; padding: 0; background: none; cursor: pointer; transform-origin: 50% 100%;
   transform: rotate(var(--lean)); }
+/* a slice of the room photo (the shelf's front edge) drawn over the book bases */
+.shelf-lip { position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: var(--room) center/cover no-repeat; }
 .rbook--in { animation: rbookIn .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--si) * 80ms); }
 @keyframes rbookIn { from { opacity: 0; transform: translateY(6px) rotate(var(--lean)); } to { opacity: 1; } }
 .rbook:active { transform: rotate(var(--lean)) translateY(-1px); }
