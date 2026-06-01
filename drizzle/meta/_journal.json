@@ -29,6 +29,13 @@
       "when": 1780400000000,
       "tag": "0004_goon_cover",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1780500000000,
+      "tag": "0005_tomorrow_cover",
+      "breakpoints": true
     }
   ]
 }

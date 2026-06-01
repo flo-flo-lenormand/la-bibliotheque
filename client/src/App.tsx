@@ -8,12 +8,12 @@ import { ROOM_BG } from "./roombg";
 type Book = ApiResponse<typeof api, "list_books">["books"][number];
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
-/* The empty-library photo, measured: the lit ledge of each shelf (where a
-   book's bottom rests) and the ledge above it, as % of the image height. */
-const BOARDS = [21.0, 30.5, 40.0, 50.0, 59.8, 69.8, 81.3];
-const CEILS = [11.5, 21.0, 30.5, 40.0, 50.0, 59.8, 69.8];
-const CAVITY_LEFT = 24;   // % from left where books begin
-const CAVITY_RIGHT = 14;  // % inset from right
+/* The wood-shelf photo, measured: the ledge of each shelf (book-bottom line)
+   and the ledge above it, as % of the image height. */
+const BOARDS = [21.1, 30.7, 40.4, 50.2, 59.7, 69.5, 79.0];
+const CEILS = [10.2, 21.1, 30.7, 40.4, 50.2, 59.7, 69.5];
+const CAVITY_LEFT = 17;   // % from left where books begin
+const CAVITY_RIGHT = 22;  // % inset from right (cavity right edge ~78%)
 
 function hash(s: string) {
   let h = 2166136261;
@@ -271,13 +271,14 @@ const CSS = String.raw`
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, Arial, sans-serif;
   --display: 'Fraunces', Georgia, serif;
   --body: 'Newsreader', Georgia, serif;
-  min-height: 100svh; background: #efe7d8; color: var(--ink);
+  min-height: 100svh; background: #e8ddc7; color: var(--ink);
   font-family: var(--sans); -webkit-font-smoothing: antialiased;
-  display: flex; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
 
 /* ---- the room: the photo is the set, books stand on its shelves ---- */
-.room { position: relative; height: 100svh; aspect-ratio: 759 / 1640; overflow: hidden; }
+.room { position: relative; width: min(100vw, calc(100svh * 800 / 1421)); aspect-ratio: 800 / 1421;
+  container-type: size; overflow: hidden; }
 .room__img { position: absolute; inset: 0; background: var(--room) center/cover no-repeat; }
 
 /* one shelf = a zero-height line pinned at the ledge; books align-end so their
@@ -285,8 +286,8 @@ const CSS = String.raw`
 .shelf-row { position: absolute; left: ${CAVITY_LEFT}%; right: ${CAVITY_RIGHT}%; height: 0;
   display: flex; align-items: flex-end; gap: 2.4%; }
 
-.rbook { position: relative; flex: 0 0 auto; height: calc(var(--bh) * 1svh); aspect-ratio: var(--ar);
-  margin-bottom: -2.4svh;   /* dip below the ledge so the photo lip can cover the base */
+.rbook { position: relative; flex: 0 0 auto; height: calc(var(--bh) * 1cqh); aspect-ratio: var(--ar);
+  margin-bottom: -2.4cqh;   /* dip below the ledge so the photo lip can cover the base */
   border: 0; padding: 0; background: none; cursor: pointer; transform-origin: 50% 100%;
   transform: rotate(var(--lean)); }
 /* a slice of the room photo (the shelf's front edge) drawn over the book bases */

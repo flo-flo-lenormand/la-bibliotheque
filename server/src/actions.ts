@@ -150,6 +150,7 @@ export const Actions = {
           pageCount: 416,
           dateAdded: new Date("2026-05-29T00:00:00Z"),
           category: "Romans",
+          coverUrl: "https://raw.githack.com/flo-flo-lenormand/la-bibliotheque/main/docs/covers/tomorrow.jpg",
         },
         {
           title: "A Visit from the Goon Squad",
